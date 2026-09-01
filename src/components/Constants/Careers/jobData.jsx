@@ -1,0 +1,155 @@
+
+  export const allJobs = [
+    // Sales Jobs
+    {
+      id: 1,
+      title: "Senior Sales Manager",
+      company: "Your Company",
+      type: "Full-time",
+      salary: "$45,000-65,000",
+      category: "SALES",
+    },
+    {
+      id: 2,
+      title: "Sales Representative",
+      company: "Your Company",
+      type: "Full-time",
+      salary: "$35,000-50,000",
+      category: "SALES",
+    },
+    {
+      id: 3,
+      title: "Business Development Executive",
+      company: "Your Company",
+      type: "Full-time",
+      salary: "$40,000-60,000",
+      category: "SALES",
+    },
+    // SAP Jobs
+    {
+      id: 4,
+      title: "SAP Consultant",
+      company: "Your Company",
+      type: "Full-time",
+      salary: "$70,000-90,000",
+      category: "SAP",
+    },
+    {
+      id: 5,
+      title: "SAP Developer",
+      company: "Your Company",
+      type: "Full-time",
+      salary: "$65,000-85,000",
+      category: "SAP",
+    },
+    {
+      id: 6,
+      title: "SAP Functional Analyst",
+      company: "Your Company",
+      type: "Freelancer",
+      salary: "$60,000-80,000",
+      category: "SAP",
+    },
+    // Digital Marketing Jobs
+    {
+      id: 7,
+      title: "Digital Marketing Manager",
+      company: "Your Company",
+      type: "Full-time",
+      salary: "$50,000-70,000",
+      category: "DIGITAL MARKETING",
+    },
+    {
+      id: 8,
+      title: "Social Media Specialist",
+      company: "Your Company",
+      type: "Part-time",
+      salary: "$30,000-45,000",
+      category: "DIGITAL MARKETING",
+    },
+    {
+      id: 9,
+      title: "SEO Specialist",
+      company: "Your Company",
+      type: "Freelancer",
+      salary: "$35,000-55,000",
+      category: "DIGITAL MARKETING",
+    },
+    {
+      id: 10,
+      title: "Content Marketing Lead",
+      company: "Your Company",
+      type: "Full-time",
+      salary: "$45,000-65,000",
+      category: "DIGITAL MARKETING",
+    },
+    // UI/UX Jobs
+    {
+      id: 11,
+      title: "Senior UI/UX Designer",
+      company: "Your Company",
+      type: "Full-time",
+      salary: "$55,000-75,000",
+      category: "UIUX",
+    },
+    {
+      id: 12,
+      title: "UX Researcher",
+      company: "Your Company",
+      type: "Full-time",
+      salary: "$50,000-70,000",
+      category: "UIUX",
+    },
+    {
+      id: 13,
+      title: "Product Designer",
+      company: "Your Company",
+      type: "Full-time",
+      salary: "$60,000-80,000",
+      category: "UIUX",
+    },
+    // Product & Web Development Jobs
+    {
+      id: 14,
+      title: "Full Stack Developer",
+      company: "Your Company",
+      type: "Full-time",
+      salary: "$65,000-85,000",
+      category: "PRODUCT & WEB DEVELOPMENT",
+    },
+    {
+      id: 15,
+      title: "Frontend Developer",
+      company: "Your Company",
+      type: "Full-time",
+      salary: "$55,000-75,000",
+      category: "PRODUCT & WEB DEVELOPMENT",
+    },
+    {
+      id: 16,
+      title: "Product Manager",
+      company: "Your Company",
+      type: "Full-time",
+      salary: "$70,000-95,000",
+      category: "PRODUCT & WEB DEVELOPMENT",
+    },
+    {
+      id: 17,
+      title: "Backend Developer",
+      company: "Your Company",
+      type: "Freelancer",
+      salary: "$60,000-80,000",
+      category: "PRODUCT & WEB DEVELOPMENT",
+    },
+  ];
+
+
+
+  export  const tabs = [
+      "ALL",
+      "SALES",
+      "SAP",
+      "DIGITAL MARKETING",
+      "UI/UX",
+      "PRODUCT & WEB DEVELOPMENT",
+    ];
