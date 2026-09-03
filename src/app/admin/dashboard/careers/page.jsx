@@ -33,7 +33,7 @@ const STATUS_STYLES = {
 
 const emptyForm = {
   title: "",
-  company: "Support Studio Technologies",
+  company: "",
   location: "",
   mode_of_work: "On-site",
   type_of_work: "Full-time",
@@ -98,7 +98,7 @@ export default function AdminCareersDashboard() {
     setEditingId(job.id);
     setForm({
       title: job.title || "",
-      company: job.company || "Support Studio Technologies",
+      company: job.company || "",
       location: job.location || "",
       mode_of_work: job.mode_of_work || "On-site",
       type_of_work: job.type_of_work || "Full-time",

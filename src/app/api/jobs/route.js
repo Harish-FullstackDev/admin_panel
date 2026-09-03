@@ -94,7 +94,7 @@ export async function POST(request) {
       .insert({
         title: title.trim(),
         slug,
-        company: company?.trim() || "Support Studio Technologies",
+        company: company?.trim() || "",
         location: location.trim(),
         mode_of_work: mode_of_work || "On-site",
         type_of_work: type_of_work || "Full-time",
@@ -175,7 +175,7 @@ export async function PUT(request) {
       .update({
         title: title.trim(),
         slug,
-        company: company?.trim() || "Support Studio Technologies",
+        company: company?.trim() || "",
         location: location.trim(),
         mode_of_work: mode_of_work || "On-site",
         type_of_work: type_of_work || "Full-time",
