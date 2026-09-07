@@ -32,7 +32,7 @@ const Footer = () => {
             <div className="relative h-8 sm:h-10 w-auto aspect-[4/1] md:mb-12">
               <Image
                 src={logo}
-                alt="SST Logo"
+                alt="Ascendus Logo"
                 fill
                 style={{
                   objectFit: "contain",
@@ -446,7 +446,7 @@ const Footer = () => {
 
           <div className="md:col-span-2 ">
             <p className="text-sm text-white flex items-center min-h-[50px]">
-              © 2026 Support Studio Technologies. All Rights Reserved.
+              © 2026 Ascendus. All Rights Reserved.
             </p>
           </div>
         </div>

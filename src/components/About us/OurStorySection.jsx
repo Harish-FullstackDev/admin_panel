@@ -108,7 +108,7 @@ const OurStorySection = () => {
             </span>
           </h2>
           <p className="text-gray-600 text-lg leading-relaxed max-w-4xl mx-auto">
-            Support Studio Technologies (SST) began with a vision to bring
+            Ascendus began with a vision to bring
             world-class enterprise solutions to businesses of all sizes.
             Starting as a specialized SAP implementation partner in Pondicherry,
             we have grown into a global player with a strong presence across the

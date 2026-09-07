@@ -413,7 +413,7 @@ const TestimonialsPage = () => {
               </motion.h3>
 
               <motion.p variants={itemVariants} className="text-gray-300 mb-6">
-                Join our satisfied clients and experience the power of SST's Prime
+                Join our satisfied clients and experience the power of Ascendus's Prime
                 solutions
               </motion.p>
 

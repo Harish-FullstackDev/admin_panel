@@ -63,7 +63,7 @@ const YourGrowthPartner = () => {
           </div>
 
           <h2 className="text-2xl sm:text-3xl md:text-4xl lg:text-6xl xl:text-4xl font-normal leading-tight mb-4 px-2">
-At SST, we help you shine {" "}
+At Ascendus, we help you shine {" "}
 <span className="block sm:hidden"></span>
 <span className="gradient-text">your best.</span>
           </h2>

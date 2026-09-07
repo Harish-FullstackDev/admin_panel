@@ -92,7 +92,7 @@ function LoginForm() {
     <div className="w-full max-w-md p-8 bg-white/80 backdrop-blur-md rounded-3xl border border-slate-200/80 shadow-xl relative z-10 hover:shadow-2xl transition-all duration-300">
       <div className="text-center mb-8">
         <h1 className="text-2xl font-extrabold tracking-tight text-slate-900 uppercase">
-          Support Studio <span className="text-brand-teal-500">Technologies</span>
+          Ascendus
         </h1>
         <p className="text-slate-500 text-xs font-medium mt-2">
           Administrative Access Control Center

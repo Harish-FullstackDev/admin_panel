@@ -94,7 +94,7 @@ const AboutMap = () => {
             viewport={{ once: true }}
             transition={{ duration: 0.8, delay: 0.4 }}
           >
-            Support Studio Technologies (SST) combines local expertise with global delivery capabilities.<br />
+            Ascendus combines local expertise with global delivery capabilities.<br />
               With our headquarters in India and a strong footprint across the Middle East, we bring world-class enterprise solutions<br />
             closer to our clients while ensuring compliance with regional business and regulatory needs.
           </motion.p>

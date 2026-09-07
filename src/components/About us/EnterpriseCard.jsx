@@ -142,7 +142,7 @@ const EnterpriseCards = () => {
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.8, duration: 0.5 }}
               >
-                Support Studio Technologies (SST) is a global SAP-certified
+                Ascendus is a global SAP-certified
                 partner enabling organizations to embrace innovation and achieve
                 sustainable growth. With expertise across SAP, Microsoft,
                 Salesforce, Cloud, and Emerging Technologies, we design

@@ -19,7 +19,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       <aside className="w-56 shrink-0 border-r border-slate-200 bg-white flex flex-col">
         <div className="px-5 py-5 border-b border-slate-200">
           <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-brand-teal-600 to-brand-teal-400 flex items-center justify-center font-black text-white text-lg tracking-wider shadow-sm shadow-brand-teal-500/10">
-            SST
+            ASC
           </div>
         </div>
         <nav className="flex-1 px-3 py-4 space-y-1">

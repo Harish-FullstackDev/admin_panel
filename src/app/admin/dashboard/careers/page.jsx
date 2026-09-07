@@ -20,7 +20,15 @@ import {
   ClipboardList,
 } from "lucide-react";
 
-const AREA_OF_INTEREST = ["SALES", "SAP", "DIGITAL MARKETING", "UI/UX", "PRODUCT & WEB DEVELOPMENT"];
+const AREA_OF_INTEREST = [
+  "SAP Consulting & Delivery",
+  "Sales & Business Development",
+  "Marketing",
+  "Engineering & Technology",
+  "Design",
+  "Human Resources",
+  "Finance & Operations",
+];
 const MODES_OF_WORK = ["On-site", "Hybrid", "Remote"];
 const TYPES_OF_WORK = ["Full-time", "Part-time", "Contract", "Freelancer", "Internship"];
 const STATUSES = ["Draft", "Open", "Closed"];
@@ -220,7 +228,7 @@ export default function AdminCareersDashboard() {
       <header className="border-b border-slate-200 bg-white/85 backdrop-blur-md sticky top-0 z-30 px-6 py-4 flex items-center justify-between">
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-brand-teal-600 to-brand-teal-400 flex items-center justify-center font-black text-white text-lg tracking-wider shadow-sm shadow-brand-teal-500/10">
-            SST
+            ASC
           </div>
           <div>
             <h1 className="font-extrabold text-sm tracking-widest text-slate-900 uppercase">STUDIO PORTAL</h1>
@@ -652,7 +660,7 @@ export default function AdminCareersDashboard() {
       )}
 
       <footer className="border-t border-slate-100 py-6 text-center text-[10px] text-slate-400 mt-20 select-none">
-        &copy; {new Date().getFullYear()} Support Studio Technologies (SST) Inc. Control Panel. All rights reserved.
+        &copy; {new Date().getFullYear()} Ascendus Inc. Control Panel. All rights reserved.
       </footer>
     </div>
   );

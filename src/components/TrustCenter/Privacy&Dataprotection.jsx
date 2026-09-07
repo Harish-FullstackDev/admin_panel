@@ -79,7 +79,7 @@ export default function PrivacyAndDataprotection() {
             <span className="gradient-text"> Priority</span>
           </motion.h2>
           <p className="text-base lg:text-lg text-gray-600 leading-relaxed">
-            At SST, data privacy isn't an afterthought—it's built into
+            At Ascendus, data privacy isn't an afterthought—it's built into
             everything we do. From system design to daily operations, we
             safeguard sensitive information with strict policies and advanced
             technologies, ensuring you stay in control of your data.

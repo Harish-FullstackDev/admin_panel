@@ -63,11 +63,11 @@ const WhyjoinSST = () => {
           </div>
 
           <h2 className="text-2xl sm:text-3xl md:text-4xl lg:text-6xl xl:text-4xl font-normal leading-tight mb-4 px-2">
-            Why join <span className="gradient-text">SST?</span>
+            Why join <span className="gradient-text">Ascendus?</span>
           </h2>
 
           <p className="text-gray-600 max-w-2xl mx-auto leading-relaxed text-base sm:text-lg md:text-lg px-2">
-            No matter your experience level, all SST employees get opportunities,
+            No matter your experience level, all Ascendus employees get opportunities,
             support, and resources to pursue their career goals, balance work-life
             commitments, and strengthen their health and well-being.
           </p>

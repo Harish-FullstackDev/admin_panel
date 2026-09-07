@@ -2,7 +2,7 @@ import Certified from "../../../assets/Home/whoWeAreIcons/Certified_Expertise.sv
 import Customer from "../../../assets/Home/whoWeAreIcons/Customer_Centric.svg";
 import Global from "../../../assets/Home/whoWeAreIcons/Global_Presence.svg";
 
-export const text = `Support Studio Technologies (SST) is a global SAP-certified
+export const text = `Ascendus is a global SAP-certified
 partner enabling organizations to embrace innovation and achieve
 sustainable growth. With expertise across SAP, Microsoft,
 Salesforce, Cloud, and Emerging Technologies, we design

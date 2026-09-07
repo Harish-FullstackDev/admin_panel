@@ -10,7 +10,7 @@ const AboutHeader = () => {
         subtitle="Empowering businesses with intelligent solutions."
         title="Your Partner for <br/>
 Enterprise Transformation"
-        description="Support Studio Technologies (SST) is a global SAP-certified partner delivering scalable Enterprise solutions that streamline operations, enable innovation, and drive sustainable growth."
+        description="Ascendus is a global SAP-certified partner delivering scalable Enterprise solutions that streamline operations, enable innovation, and drive sustainable growth."
       />
     </>
   );

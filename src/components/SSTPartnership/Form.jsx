@@ -332,7 +332,7 @@ function Form() {
           className="text-4xl lg:text-6xl xl:text-4xl font-normal leading-tight mb-4"
           variants={textVariants}
         >
-          SST Partnership 
+          Ascendus Partnership
           <span className="gradient-text"> Program Registration</span>
         </motion.h1>
         <motion.p

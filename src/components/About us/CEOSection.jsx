@@ -38,7 +38,7 @@ const CEOMessageSkeleton = () => (
           <p className="font-semibold text-lg">- Krishnakumar</p>
           <p className="text-sm text-gray-300">
             Chief Executive Officer <br />
-            Support Studio Technologies
+            Ascendus
           </p>
         </div>
       </div>

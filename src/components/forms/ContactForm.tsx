@@ -11,7 +11,7 @@ function resolveApiError(code?: string, fallback?: string): string {
     '23505': 'This business email is already registered in our system.',
     '23514': 'The email address format is invalid.',
     '23503': 'Required data reference missing. Please refresh and try again.',
-    '42501': 'Security policy restriction. Please contact SST Support.',
+    '42501': 'Security policy restriction. Please contact Ascendus Support.',
   };
   return (code && errorMap[code]) || fallback || 'An unexpected error occurred. Please try again.';
 }
@@ -120,7 +120,7 @@ export default function ContactForm() {
           <CheckCircle className="w-12 h-12" aria-hidden="true" />
         </div>
         <h2 className="text-4xl font-extrabold text-slate-900 mb-4 tracking-tight">Requirement Captured</h2>
-        <p className="text-slate-500 mb-10 text-lg font-medium">Your request has been prioritized under sst-premium. An SST transformation consultant will contact you via your business email shortly.</p>
+        <p className="text-slate-500 mb-10 text-lg font-medium">Your request has been prioritized under ascendus-premium. An Ascendus transformation consultant will contact you via your business email shortly.</p>
         <button 
           onClick={() => setStatus("idle")}
           className="bg-slate-900 text-white font-bold py-4 px-10 rounded-2xl hover:bg-black transition-all shadow-lg active:scale-95"
@@ -279,7 +279,7 @@ export default function ContactForm() {
                 />
             </div>
             <label htmlFor="consentGiven" className="text-[10px] sm:text-xs text-slate-500 leading-relaxed font-bold select-none cursor-pointer">
-              By initializing this request, I consent to SST processing my professional data under GCC Regional Data Laws (UAE PDPL / Saudi PDPL) and EU GDPR protocols for enterprise consulting.
+              By initializing this request, I consent to Ascendus processing my professional data under GCC Regional Data Laws (UAE PDPL / Saudi PDPL) and EU GDPR protocols for enterprise consulting.
             </label>
           </div>
 

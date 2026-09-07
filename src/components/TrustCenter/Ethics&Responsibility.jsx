@@ -367,7 +367,7 @@ const ResponsibilitySection = () => {
             transition={{ duration: 0.6, delay: 0.4 }}
           >
             <p className="mb-4">
-              At SST, we believe trust is earned not just through secure
+              At Ascendus, we believe trust is earned not just through secure
               solutions, but through responsible innovation and ethical
               practices. We design technology with people, society, and the
               environment in mind, ensuring long-term, sustainable value.

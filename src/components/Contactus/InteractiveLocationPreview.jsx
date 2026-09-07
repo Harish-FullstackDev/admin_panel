@@ -289,7 +289,7 @@ const InteractiveLocationPreview = () => {
                                             <div className="flex-1 flex flex-col justify-between">
                                                 <div>
                                                     <h4 className="text-base font-extrabold tracking-wider text-white uppercase">
-                                                        SST Technologies
+                                                        Ascendus
                                                     </h4>
                                                     {/* Accent underline */}
                                                     <div className="w-12 h-[3px] bg-blue-500 rounded-full mt-1.5 mb-3" />
@@ -395,7 +395,7 @@ const InteractiveLocationPreview = () => {
                                 {/* Office Title */}
                                 <div>
                                     <h3 className="text-xl font-bold text-white tracking-wide">
-                                        Support Studio Technologies
+                                        Ascendus
                                     </h3>
                                     <div className="flex items-center gap-1.5 text-slate-400 mt-1">
                                         <Clock className="w-3.5 h-3.5 text-cyan-400" />

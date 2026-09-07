@@ -9,11 +9,11 @@ export const generateOrganizationSchema = () => {
   return {
     "@context": "https://schema.org",
     "@type": "Organization",
-    "name": "Support Studio Technologies",
-    "alternateName": "SST Technologies",
+    "name": "Ascendus",
+    "alternateName": "Ascendus",
     "url": "https://www.supportstudio.tech",
     "logo": "https://www.supportstudio.tech/PartnerLogos/sst-logo.png",
-    "description": "Support Studio Technologies (SST) is a premium enterprise IT and SAP consulting firm providing digital transformation, cloud managed services, and S/4HANA migration across the UAE, Saudi Arabia, and the GCC.",
+    "description": "Ascendus is a premium enterprise IT and SAP consulting firm providing digital transformation, cloud managed services, and S/4HANA migration across the UAE, Saudi Arabia, and the GCC.",
     "address": {
       "@type": "PostalAddress",
       "addressLocality": "Dubai",
@@ -55,7 +55,7 @@ export const generateServiceSchema = (service: { name: string; description: stri
     "serviceType": service.category || "IT Consulting",
     "provider": {
       "@type": "Organization",
-      "name": "Support Studio Technologies",
+      "name": "Ascendus",
       "url": "https://www.supportstudio.tech"
     },
     "name": service.name,

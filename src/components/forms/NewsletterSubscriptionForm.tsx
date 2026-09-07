@@ -50,7 +50,7 @@ export default function NewsletterSubscriptionForm() {
             <CheckCircle className="w-8 h-8" aria-hidden="true" />
           </div>
           <h3 className="text-xl font-bold text-white mb-2">Transmission Confirmed</h3>
-          <p className="text-slate-400 text-sm">You are now part of the SST Enterprise Network. Expect high-value SAP insights shortly.</p>
+          <p className="text-slate-400 text-sm">You are now part of the Ascendus Enterprise Network. Expect high-value SAP insights shortly.</p>
           <button 
             onClick={() => setStatus("idle")}
             className="mt-6 text-blue-500 font-bold text-xs uppercase tracking-widest hover:text-white transition-colors"
@@ -108,7 +108,7 @@ export default function NewsletterSubscriptionForm() {
                 className="mt-1 w-5 h-5 rounded border-slate-800 bg-slate-900 text-blue-500 focus:ring-blue-500/40 cursor-pointer"
               />
               <label htmlFor="newsletterConsent" className="text-[10px] text-slate-500 leading-tight select-none cursor-pointer">
-                By subscribing, I consent to receiving technical updates and marketing communications from SST under GCC data laws and EU GDPR protocols.
+                By subscribing, I consent to receiving technical updates and marketing communications from Ascendus under GCC data laws and EU GDPR protocols.
               </label>
             </div>
           </div>

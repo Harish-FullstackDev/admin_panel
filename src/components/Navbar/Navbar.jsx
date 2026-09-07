@@ -197,7 +197,7 @@ const Navbar = () => {
                   <div className="relative z-10 flex-shrink-0">
                     <Image
                       src={logo3}
-                      alt="SST Icon"
+                      alt="Ascendus Icon"
                       width={48}
                       height={48}
                       className="w-10.5 h-10.5 transition-all duration-300 ease-out"
@@ -222,7 +222,7 @@ const Navbar = () => {
                   >
                     <Image
                       src={isNavbarLight ? logo5 : logo4}
-                      alt="Support Studio Technologies"
+                      alt="Ascendus"
                       width={260}
                       height={40}
                       className="h-10 w-auto"
@@ -457,7 +457,7 @@ const Navbar = () => {
             <Link href="/" onClick={closeMenu} className="flex items-center">
               <Image
                 src={isNavbarLight ? logo2 : logo}
-                alt="SST Logo"
+                alt="Ascendus Logo"
                 className="h-8 sm:h-10 w-auto"
                 width={160}
                 height={40}
@@ -489,7 +489,7 @@ const Navbar = () => {
           <Link href="/" onClick={closeMenu}>
             <Image
               src={logo2}
-              alt="SST Logo"
+              alt="Ascendus Logo"
               className="h-8 sm:h-10 w-auto"
               width={160}
               height={40}

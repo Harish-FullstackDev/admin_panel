@@ -2,7 +2,7 @@ export function generateOrganizationSchema() {
   return {
     "@context": "https://schema.org",
     "@type": "Organization",
-    "name": "Support Studio Technologies",
+    "name": "Ascendus",
     "url": "https://www.supportstudio.tech",
     "logo": "https://www.supportstudio.tech/logo.png",
     "contactPoint": {
@@ -40,7 +40,7 @@ export function generateServiceSchema(serviceName: string, description: string, 
     "description": description,
     "provider": {
       "@type": "Organization",
-      "name": "Support Studio Technologies",
+      "name": "Ascendus",
       "url": "https://www.supportstudio.tech"
     },
     "areaServed": ["AE", "SA", "BH", "QA", "OM", "KW"],

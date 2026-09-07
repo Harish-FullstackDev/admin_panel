@@ -28,10 +28,10 @@ export const viewport: Viewport = {
 export const metadata: Metadata = {
   metadataBase: new URL('https://www.supportstudio.tech'),
   title: {
-    default: "Support Studio Technologies | Enterprise SAP & IT Consulting GCC",
-    template: "%s | Support Studio Technologies"
+    default: "Ascendus | Enterprise SAP & IT Consulting GCC",
+    template: "%s | Ascendus"
   },
-  description: "Support Studio Technologies (SST) provides premium SAP consulting, IT managed services, and digital transformation solutions for enterprises in the UAE, Saudi Arabia, and the wider GCC region.",
+  description: "Ascendus provides premium SAP consulting, IT managed services, and digital transformation solutions for enterprises in the UAE, Saudi Arabia, and the wider GCC region.",
   keywords: [
     "SAP Consulting GCC",
     "IT Services UAE",
@@ -41,9 +41,9 @@ export const metadata: Metadata = {
     "S/4HANA Migration Dubai",
     "IT Strategy Riyadh"
   ],
-  authors: [{ name: "Support Studio Technologies", url: "https://www.supportstudio.tech" }],
-  creator: "Support Studio Technologies Engineering",
-  publisher: "Support Studio Technologies",
+  authors: [{ name: "Ascendus", url: "https://www.supportstudio.tech" }],
+  creator: "Ascendus Engineering",
+  publisher: "Ascendus",
   formatDetection: {
     email: false,
     address: false,
@@ -61,21 +61,21 @@ export const metadata: Metadata = {
     type: "website",
     locale: "en_US",
     url: "https://www.supportstudio.tech",
-    siteName: "Support Studio Technologies",
-    title: "Support Studio Technologies | Enterprise SAP & IT Consulting GCC",
+    siteName: "Ascendus",
+    title: "Ascendus | Enterprise SAP & IT Consulting GCC",
     description: "Leading SAP and IT consulting firm specializing in enterprise digital transformation across the GCC region.",
     images: [
       {
         url: "/og-image.png", // Asset request tracking in pending_assets.md
         width: 1200,
         height: 630,
-        alt: "Support Studio Technologies Enterprise Solutions",
+        alt: "Ascendus Enterprise Solutions",
       },
     ],
   },
   twitter: {
     card: "summary_large_image",
-    title: "Support Studio Technologies | SAP & IT Experts",
+    title: "Ascendus | SAP & IT Experts",
     description: "Enterprise SAP and IT consulting services for the GCC market.",
     images: ["/twitter-image.png"], // Asset request tracking in pending_assets.md
     creator: "@SST_Tech",

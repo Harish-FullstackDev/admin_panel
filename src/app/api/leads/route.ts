@@ -77,6 +77,6 @@ export async function POST(request: NextRequest) {
 
   } catch (err: any) {
     console.error('API Handler Critical Failure:', err);
-    return NextResponse.json({ error: 'Internal system fault. Please contact SST technical support.' }, { status: 500 });
+    return NextResponse.json({ error: 'Internal system fault. Please contact Ascendus technical support.' }, { status: 500 });
   }
 }
