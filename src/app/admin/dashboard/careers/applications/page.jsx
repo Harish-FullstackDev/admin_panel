@@ -228,9 +228,26 @@ function ApplicationsDashboard() {
                   {filteredApplications.map((app) => (
                     <tr key={app.id} className="hover:bg-slate-50/40 transition-colors">
                       <td className="px-6 py-4 font-bold text-slate-800">
-                        {app.first_name} {app.last_name}
+                        <div className="flex flex-col gap-1">
+                          <span>{app.first_name} {app.last_name}</span>
+                          <span
+                            className={`w-fit px-1.5 py-0.5 rounded text-[9px] font-bold uppercase tracking-wide ${
+                              app.candidate_id ? "bg-brand-teal-50 text-brand-teal-700" : "bg-slate-100 text-slate-500"
+                            }`}
+                          >
+                            {app.candidate_id ? "Account" : "Guest"}
+                          </span>
+                        </div>
                       </td>
-                      <td className="px-6 py-4 text-slate-600">{app.position}</td>
+                      <td className="px-6 py-4 text-slate-600">
+                        {app.job_slug ? (
+                          <a href={`/careers/${app.job_slug}`} target="_blank" rel="noreferrer" className="hover:text-brand-teal-600 hover:underline">
+                            {app.position}
+                          </a>
+                        ) : (
+                          app.position
+                        )}
+                      </td>
                       <td className="px-6 py-4 text-slate-600">
                         <div className="flex flex-col gap-1">
                           <span className="flex items-center gap-1.5">

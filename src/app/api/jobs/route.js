@@ -24,7 +24,7 @@ function toStringArray(value) {
 // GET all jobs (admin inventory — includes Draft/Closed postings, not just
 // the ones the public site is allowed to read via RLS).
 export async function GET(request) {
-  if (!isAdminRequest(request)) {
+  if (!(await isAdminRequest(request))) {
     return NextResponse.json({ error: "Unauthorized." }, { status: 401 });
   }
 
@@ -49,7 +49,7 @@ export async function GET(request) {
 
 // POST: Create a new job posting
 export async function POST(request) {
-  if (!isAdminRequest(request)) {
+  if (!(await isAdminRequest(request))) {
     return NextResponse.json({ error: "Unauthorized." }, { status: 401 });
   }
 
@@ -128,7 +128,7 @@ export async function POST(request) {
 
 // PUT: Update an existing job posting
 export async function PUT(request) {
-  if (!isAdminRequest(request)) {
+  if (!(await isAdminRequest(request))) {
     return NextResponse.json({ error: "Unauthorized." }, { status: 401 });
   }
 
@@ -210,7 +210,7 @@ export async function PUT(request) {
 
 // DELETE: Delete a job posting by query ID
 export async function DELETE(request) {
-  if (!isAdminRequest(request)) {
+  if (!(await isAdminRequest(request))) {
     return NextResponse.json({ error: "Unauthorized." }, { status: 401 });
   }
 

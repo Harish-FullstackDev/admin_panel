@@ -1,41 +1,33 @@
-// Shared server-side guard for Route Handlers that must only be callable by a
-// logged-in admin. Mirrors the session check already performed in
-// `src/middleware.ts` for page routes: it trusts the same `sst_admin_session`
-// cookie (a raw Supabase access token) and validates its expiry + role claim
-// without a network round trip.
-//
-// NOTE: middleware only protects paths under "/admin/*". API routes such as
-// "/api/jobs" and "/api/job-applications" live outside that matcher, so
-// mutating/PII-bearing endpoints must call this guard explicitly.
+// Server-side guard for admin-only Route Handlers. Middleware only matches
+// "/admin/*", so API routes must call this explicitly.
+import { createAdminClient } from "@/lib/supabaseClient";
 
-function decodeSessionCookie(rawToken) {
-  const parts = rawToken.split(".");
-  if (parts.length < 2) {
-    throw new Error("Malformed session token.");
-  }
-
-  let base64 = parts[1].replace(/-/g, "+").replace(/_/g, "/");
-  while (base64.length % 4) {
-    base64 += "=";
-  }
-
-  return JSON.parse(Buffer.from(base64, "base64").toString("utf-8"));
+function adminAllowlist() {
+  return (process.env.ADMIN_EMAILS || "")
+    .split(",")
+    .map((email) => email.trim().toLowerCase())
+    .filter(Boolean);
 }
 
 /**
+ * Verifies the `sst_admin_session` token against the admin Supabase project
+ * (signature checked server-side), so tokens from the candidate project or
+ * forged payloads are rejected.
  * @param {import('next/server').NextRequest} request
- * @returns {boolean} true if the request carries a valid, unexpired admin session
+ * @returns {Promise<boolean>}
  */
-export function isAdminRequest(request) {
+export async function isAdminRequest(request) {
   try {
-    const sessionCookie = request.cookies.get("sst_admin_session")?.value;
-    if (!sessionCookie) return false;
+    const token = request.cookies.get("sst_admin_session")?.value;
+    if (!token) return false;
 
-    const payload = decodeSessionCookie(sessionCookie);
-    const now = Math.floor(Date.now() / 1000);
+    const { data, error } = await createAdminClient().auth.getUser(token);
+    if (error || !data?.user) return false;
 
-    if (payload.exp && payload.exp < now) return false;
-    if (payload.role !== "authenticated") return false;
+    const allowlist = adminAllowlist();
+    if (allowlist.length && !allowlist.includes(data.user.email?.toLowerCase())) {
+      return false;
+    }
 
     return true;
   } catch (err) {
