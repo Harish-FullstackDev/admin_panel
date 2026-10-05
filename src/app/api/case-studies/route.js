@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { requirePermission } from "@/lib/hcm/auth";
 import { createAdminClient } from "@/lib/supabaseClient";
 
 function slugify(text) {
@@ -100,6 +101,9 @@ export async function GET() {
 
 // POST: Create a new case study
 export async function POST(request) {
+  const auth = await requirePermission(request, "content.manage");
+  if (auth.error) return auth.error;
+
   try {
     const formData = await request.formData();
     const {
@@ -185,6 +189,9 @@ export async function POST(request) {
 
 // PUT: Update an existing case study
 export async function PUT(request) {
+  const auth = await requirePermission(request, "content.manage");
+  if (auth.error) return auth.error;
+
   try {
     const formData = await request.formData();
     const id = formData.get("id");
@@ -277,6 +284,9 @@ export async function PUT(request) {
 
 // DELETE: Delete a case study by query ID
 export async function DELETE(request) {
+  const auth = await requirePermission(request, "content.manage");
+  if (auth.error) return auth.error;
+
   try {
     const { searchParams } = new URL(request.url);
     const id = searchParams.get("id");

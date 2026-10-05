@@ -149,7 +149,7 @@ export default function AdminBlogsDashboard() {
 
   // Log Out operation
   const handleLogout = () => {
-    document.cookie = "sst_admin_session=; path=/; max-age=0; Secure; SameSite=Lax";
+    document.cookie = "hcm_session=; path=/; max-age=0; SameSite=Lax";
     router.push("/admin/login");
   };
 

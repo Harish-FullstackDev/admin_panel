@@ -3,7 +3,12 @@
 import React, { useState, useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Lock, Mail, Eye, EyeOff, AlertCircle } from "lucide-react";
-import { supabase } from "@/lib/supabaseClient";
+import { internalSupabase } from "@/lib/candidateSupabase";
+import { writeSessionCookie, clearSessionCookie } from "@/lib/hcm/session";
+
+function safeRedirect(value: string | null) {
+  return value && value.startsWith("/admin") && !value.startsWith("//") ? value : "/admin/dashboard";
+}
 
 function LoginForm() {
   const router = useRouter();
@@ -20,11 +25,32 @@ function LoginForm() {
   const [apiError, setApiError] = useState("");
   const [notice, setNotice] = useState("");
 
-  useEffect(() => {
-    // Show session expired notification if redirected from middleware
-    if (searchParams.get("reason") === "session_expired") {
-      setNotice("Your administrative session has expired. Please sign in again.");
+  const redirectTo = safeRedirect(searchParams.get("redirect"));
+
+  // Establishes the cookie, then confirms the account is an active internal user.
+  const completeLogin = async (session: { access_token: string; expires_in?: number }) => {
+    writeSessionCookie(session);
+    const res = await fetch("/api/hcm/me", {
+      method: "POST",
+      headers: { Authorization: `Bearer ${session.access_token}` },
+    });
+    if (!res.ok) {
+      clearSessionCookie();
+      await internalSupabase.auth.signOut();
+      throw new Error("This account does not have access to the Ascendus HCM portal, or it has been deactivated.");
     }
+    router.replace(redirectTo);
+  };
+
+  useEffect(() => {
+    if (searchParams.get("reason") === "session_expired") {
+      setNotice("Your session has expired. Please sign in again.");
+    }
+    // A persisted session (refresh token) can silently restore the cookie.
+    internalSupabase.auth.getSession().then(({ data }) => {
+      if (data.session) completeLogin(data.session).catch(() => {});
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchParams]);
 
   const validateForm = () => {
@@ -61,7 +87,7 @@ function LoginForm() {
     setNotice("");
 
     try {
-      const { data, error } = await supabase.auth.signInWithPassword({
+      const { data, error } = await internalSupabase.auth.signInWithPassword({
         email,
         password,
       });
@@ -69,17 +95,10 @@ function LoginForm() {
       if (error) {
         throw error;
       }
-
-      if (data?.session) {
-        // Securely write the access token into the administrative session cookie
-        const maxAge = data.session.expires_in;
-        document.cookie = `sst_admin_session=${data.session.access_token}; path=/; max-age=${maxAge}; Secure; SameSite=Lax`;
-        
-        // Redirect to admin blog inventory dashboard
-        router.push("/admin/dashboard/blogs");
-      } else {
+      if (!data?.session) {
         throw new Error("Failed to initialize session. Please check your credentials.");
       }
+      await completeLogin(data.session);
     } catch (err: any) {
       console.error("Login attempt failed:", err);
       setApiError(err.message || "Invalid administrative email or password.");

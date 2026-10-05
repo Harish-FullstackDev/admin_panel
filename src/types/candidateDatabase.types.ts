@@ -1,10 +1,14 @@
-export type ApplicationStatus =
-  | 'New'
-  | 'Reviewed'
+export type ApplicationStage =
+  | 'Applied'
+  | 'Screening'
+  | 'Hold'
   | 'Shortlisted'
-  | 'Interviewing'
+  | 'Interview'
+  | 'Selected'
+  | 'Offer'
+  | 'Hired'
   | 'Rejected'
-  | 'Hired';
+  | 'Withdrawn';
 
 type ApplicationRow = {
   id: string;
@@ -40,7 +44,14 @@ type ApplicationRow = {
   ref_phone: string | null;
   hear_about: string | null;
   consent_given: boolean;
-  status: ApplicationStatus;
+  stage: ApplicationStage;
+  current_round: number;
+  rejection_reason: string | null;
+  source: string;
+  stage_changed_at: string;
+  withdrawn_at: string | null;
+  manager_interest: string | null;
+  tags: string[];
   created_at: string;
   updated_at: string;
 };

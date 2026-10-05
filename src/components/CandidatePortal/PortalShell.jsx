@@ -2,12 +2,14 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Briefcase, LayoutDashboard, UserCircle, LogOut, LogIn } from "lucide-react";
+import { Briefcase, LayoutDashboard, UserCircle, LogOut, LogIn, CalendarClock, FileSignature } from "lucide-react";
 import { useCandidateSession } from "./useCandidateSession";
 
 const NAV = [
   { href: "/careers", label: "Jobs", icon: Briefcase },
   { href: "/candidate/dashboard", label: "My Applications", icon: LayoutDashboard, auth: true },
+  { href: "/candidate/interviews", label: "Interviews", icon: CalendarClock, auth: true },
+  { href: "/candidate/offers", label: "Offers", icon: FileSignature, auth: true },
   { href: "/candidate/profile", label: "Profile", icon: UserCircle, auth: true },
 ];
 
@@ -33,6 +35,8 @@ export default function PortalShell({ children }) {
                 <Link
                   key={href}
                   href={href}
+                  aria-label={label}
+                  aria-current={active ? "page" : undefined}
                   className={`flex items-center gap-1.5 rounded-lg px-2.5 py-2 transition-colors ${
                     active ? "text-brand-teal-600 bg-brand-teal-50" : "text-slate-600 hover:text-slate-900 hover:bg-slate-100"
                   }`}
