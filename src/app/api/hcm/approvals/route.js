@@ -23,7 +23,8 @@ export async function GET(request) {
     const reqIds = pending.filter((a) => a.entity_type === "requisition").map((a) => a.entity_id);
     const offerIds = pending.filter((a) => a.entity_type === "offer").map((a) => a.entity_id);
     const stageIds = pending.filter((a) => a.entity_type === "stage_record").map((a) => a.entity_id);
-    const [reqs, offers, stages] = await Promise.all([
+    const leaveIds = pending.filter((a) => a.entity_type === "leave_request").map((a) => a.entity_id);
+    const [reqs, offers, stages, leaves] = await Promise.all([
       reqIds.length ? supabase.from("requisitions").select(REQUISITION_SELECT).in("id", reqIds) : { data: [] },
       offerIds.length ? supabase.from("offers").select(OFFER_SELECT).in("id", offerIds) : { data: [] },
       stageIds.length
@@ -32,16 +33,34 @@ export async function GET(request) {
             .select("id, type, start_date, end_date, extension_count, recommendation, proposed_outcome, proposed_end_date, proposed_last_day, proposed_note, proposed_by, employees(id, full_name, employee_code, designation)")
             .in("id", stageIds)
         : { data: [] },
+      leaveIds.length
+        ? supabase
+            .from("leave_requests")
+            .select("*, leave_types(name, color), employees(id, full_name, employee_code, designation, manager_id)")
+            .in("id", leaveIds)
+        : { data: [] },
     ]);
 
     const reqMap = Object.fromEntries((reqs.data || []).map((r) => [r.id, r]));
     const offerMap = Object.fromEntries((offers.data || []).map((o) => [o.id, o]));
     const stageMap = Object.fromEntries((stages.data || []).map((r) => [r.id, r]));
+    const leaveMap = Object.fromEntries((leaves.data || []).map((r) => [r.id, r]));
     const items = [];
     for (const a of pending) {
       const entity =
-        a.entity_type === "requisition" ? reqMap[a.entity_id] : a.entity_type === "offer" ? offerMap[a.entity_id] : stageMap[a.entity_id];
+        a.entity_type === "requisition"
+          ? reqMap[a.entity_id]
+          : a.entity_type === "offer"
+            ? offerMap[a.entity_id]
+            : a.entity_type === "leave_request"
+              ? leaveMap[a.entity_id]
+              : stageMap[a.entity_id];
       if (!entity) continue;
+      if (a.entity_type === "leave_request") {
+        if (entity.employee_id === user.id) continue;
+        // Manager step goes to the reporting manager only; HR acts there from Team Leave.
+        if (a.step_key === "manager_approval" && entity.manager_id !== user.id && entity.employees?.manager_id !== user.id) continue;
+      }
       if (a.entity_type === "stage_record" && (entity.proposed_by === user.id || entity.employees?.id === user.id)) continue;
       // Requesters don't approve their own items (enforced again on the action route).
       if (a.entity_type === "requisition" && entity.raised_by === user.id) continue;

@@ -43,6 +43,25 @@ const STYLES = {
   Extended: "bg-amber-50 text-amber-700 border-amber-200",
   Converted: "bg-brand-teal-50 text-brand-teal-700 border-brand-teal-200",
   Released: "bg-red-50 text-red-700 border-red-200",
+  // leave
+  "Pending manager": "bg-amber-50 text-amber-700 border-amber-200",
+  "Pending HR": "bg-orange-50 text-orange-700 border-orange-200",
+  Approved: "bg-emerald-50 text-emerald-700 border-emerald-200",
+  Pending: "bg-amber-50 text-amber-700 border-amber-200",
+  // attendance
+  Present: "bg-emerald-50 text-emerald-700 border-emerald-200",
+  "Checked in": "bg-sky-50 text-sky-700 border-sky-200",
+  "Checked out": "bg-emerald-50 text-emerald-700 border-emerald-200",
+  "Half day": "bg-teal-50 text-teal-700 border-teal-200",
+  Absent: "bg-red-50 text-red-700 border-red-200",
+  "On leave": "bg-violet-50 text-violet-700 border-violet-200",
+  Holiday: "bg-pink-50 text-pink-700 border-pink-200",
+  Weekend: "bg-slate-50 text-slate-400 border-slate-200",
+  "Missing check-out": "bg-orange-50 text-orange-700 border-orange-200",
+  "Not checked in": "bg-slate-100 text-slate-600 border-slate-200",
+  "Off today": "bg-slate-50 text-slate-500 border-slate-200",
+  Upcoming: "bg-white text-slate-400 border-slate-200",
+  "Not joined": "bg-white text-slate-300 border-slate-100",
 };
 
 export function StatusChip({ status }) {

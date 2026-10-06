@@ -1,4 +1,15 @@
+import { createHcmAdminClient } from "@/lib/candidateSupabase";
 import { hasPermission } from "@/lib/hcm/auth";
+
+/** The signed-in user's employee record (with manager + location), or null. */
+export async function getEmployeeForUser(userId) {
+  const { data } = await createHcmAdminClient()
+    .from("employees")
+    .select("*, locations(name, timezone), manager:internal_users!employees_manager_id_fkey(id, full_name, email)")
+    .eq("id", userId)
+    .maybeSingle();
+  return data || null;
+}
 
 export const EMPLOYEE_SELECT =
   "*, departments(name), locations(name), grades(code, name), manager:internal_users!employees_manager_id_fkey(id, full_name, email)";

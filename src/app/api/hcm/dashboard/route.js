@@ -3,6 +3,7 @@ import { createHcmAdminClient } from "@/lib/candidateSupabase";
 import { getInternalUser, hasPermission, serverError } from "@/lib/hcm/auth";
 import { managedJobIds } from "@/lib/hcm/recruitment";
 import { remindDueReviews, weekStart } from "@/lib/hcm/stage";
+import { balanceSummary, todayIso, isWeekend, holidayMap } from "@/lib/hcm/leave";
 
 const count = async (query) => {
   const { count: n } = await query;
@@ -165,6 +166,46 @@ export async function GET(request) {
     ]);
     out.myTasks = myTasks;
     out.me = me || null;
+
+    if (hasPermission(user, "leave.approve") || hasPermission(user, "leave.manage") || hasPermission(user, "attendance.view")) {
+      const hrLeave = hasPermission(user, "leave.manage");
+      const allScope = hrLeave || user.permissions["leave.approve"] === "all" || user.permissions["attendance.view"] === "all";
+      const today = todayIso();
+      let teamIds = null;
+      if (!allScope) {
+        const { data: team } = await db.from("employees").select("id").eq("manager_id", user.id);
+        teamIds = (team || []).map((e) => e.id);
+      }
+      const none = ["00000000-0000-0000-0000-000000000000"];
+      const scope = (q) => (teamIds ? q.in("employee_id", teamIds.length ? teamIds : none) : q);
+      const [{ data: pendingLeave }, { data: offToday }, { count: correctionsPending }] = await Promise.all([
+        scope(db.from("leave_requests").select("id, status, manager_id, employee_id")).in("status", ["Pending manager", "Pending HR"]),
+        scope(db.from("leave_requests").select("id, start_date, end_date, leave_type, employees!inner(full_name)"))
+          .eq("status", "Approved").lte("start_date", today).gte("end_date", today),
+        scope(db.from("attendance_corrections").select("id", head)).eq("status", "Pending").neq("employee_id", user.id),
+      ]);
+      const mine = (pendingLeave || []).filter(
+        (r) => r.employee_id !== user.id && ((r.status === "Pending manager" && r.manager_id === user.id) || (r.status === "Pending HR" && hrLeave))
+      );
+      out.teamLeave = {
+        awaitingMe: mine.length,
+        offToday: (offToday || []).map((r) => ({ id: r.id, full_name: r.employees.full_name, leave_type: r.leave_type, end_date: r.end_date })),
+        correctionsPending: correctionsPending || 0,
+      };
+    }
+
+    if (me) {
+      const { data: emp } = await db.from("employees").select("id, stage, joining_date, location_id, status, locations(timezone)").eq("id", user.id).single();
+      const tz = emp.locations?.timezone || "Asia/Kolkata";
+      const today = todayIso(tz);
+      const [balances, { data: punchToday }, holidays] = await Promise.all([
+        balanceSummary(emp, Number(today.slice(0, 4))),
+        db.from("attendance").select("check_in, check_out").eq("employee_id", user.id).eq("work_date", today).maybeSingle(),
+        holidayMap(today, today, emp.location_id),
+      ]);
+      out.myLeave = { balances: balances.filter((b) => !b.unlimited) };
+      out.myAttendance = { today, record: punchToday || null, offDay: Boolean(holidays[today]) || isWeekend(today), holiday: holidays[today] || null };
+    }
     if (me) {
       const { data: stage } = await db
         .from("stage_records")

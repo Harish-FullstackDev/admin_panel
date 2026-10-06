@@ -2,7 +2,8 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { CheckCircle2, ClipboardList, CornerUpLeft, FileSignature, Forward, Inbox, XCircle, Hourglass } from "lucide-react";
+import { CheckCircle2, ClipboardList, CornerUpLeft, FileSignature, Forward, Inbox, XCircle, Hourglass, Plane } from "lucide-react";
+import { LeaveActionModal, leaveDates } from "@/components/hcm/leave";
 import { hcmJson } from "@/lib/hcm/session";
 import { useInternalUser } from "@/components/hcm/InternalUserContext";
 import {
@@ -31,6 +32,7 @@ function ApprovalsInbox() {
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
   const [modal, setModal] = useState(null);
+  const [leaveAction, setLeaveAction] = useState(null);
 
   const load = useCallback(async () => {
     const data = await hcmJson("/api/hcm/approvals");
@@ -76,12 +78,14 @@ function ApprovalsInbox() {
       {loading ? (
         <Spinner />
       ) : sorted.length === 0 ? (
-        <EmptyState icon={Inbox} title="Nothing waiting for you" description="Requisitions, above-band offers and probation extensions or releases that need your approval appear here." />
+        <EmptyState icon={Inbox} title="Nothing waiting for you" description="Requisitions, above-band offers, probation extensions or releases and leave requests that need your approval appear here." />
       ) : (
         <ul className="space-y-4">
           {sorted.map((item) => (
             <li key={item.id}>
-              {item.entity_type === "stage_record" ? (
+              {item.entity_type === "leave_request" ? (
+                <LeaveCard item={item} onAction={(action) => setLeaveAction({ request: item.entity, action })} />
+              ) : item.entity_type === "stage_record" ? (
                 <StageOutcomeCard item={item} />
               ) : item.entity_type === "offer" ? (
                 <OfferCard item={item} onAction={(action) => setModal({ item, action })} />
@@ -94,6 +98,17 @@ function ApprovalsInbox() {
       )}
 
       {modal && <DecisionModal item={modal.item} action={modal.action} onClose={() => setModal(null)} onDone={onDone} />}
+      {leaveAction && (
+        <LeaveActionModal
+          request={leaveAction.request}
+          action={leaveAction.action}
+          onClose={() => setLeaveAction(null)}
+          onDone={async (a) => {
+            setLeaveAction(null);
+            await onDone(a === "approve" ? "Leave approved." : "Leave rejected.");
+          }}
+        />
+      )}
     </>
   );
 }
@@ -393,6 +408,52 @@ function StageOutcomeCard({ item }) {
           <div className="sm:col-span-3">
             <dt className="text-xs text-slate-500">HR note</dt>
             <dd className="text-slate-700 whitespace-pre-line">{r.proposed_note}</dd>
+          </div>
+        )}
+      </dl>
+    </CardShell>
+  );
+}
+
+function LeaveCard({ item, onAction }) {
+  const r = item.entity;
+  const e = r.employees || {};
+  return (
+    <CardShell
+      icon={Plane}
+      kind="Leave request"
+      stepLabel={item.step_key === "manager_approval" ? "Manager approval" : "HR approval"}
+      item={item}
+      title={`${e.full_name || "Employee"} · ${r.leave_types?.name || r.leave_type}`}
+      subtitle={[e.designation, e.employee_code].filter(Boolean).join(" · ")}
+      actions={
+        <>
+          <Button variant="secondary" onClick={() => onAction("reject")}>
+            <XCircle className="w-4 h-4" aria-hidden="true" /> Reject
+          </Button>
+          <Button onClick={() => onAction("approve")}>
+            <CheckCircle2 className="w-4 h-4" aria-hidden="true" /> Approve
+          </Button>
+        </>
+      }
+    >
+      <dl className="grid sm:grid-cols-3 gap-3 text-sm">
+        <div>
+          <dt className="text-xs text-slate-500">Dates</dt>
+          <dd className="font-semibold text-slate-800">{leaveDates(r)}</dd>
+        </div>
+        <div>
+          <dt className="text-xs text-slate-500">Working days</dt>
+          <dd className="text-slate-800">{r.days}</dd>
+        </div>
+        <div>
+          <dt className="text-xs text-slate-500">Status</dt>
+          <dd className="text-slate-800">{r.status}</dd>
+        </div>
+        {r.reason && (
+          <div className="sm:col-span-3">
+            <dt className="text-xs text-slate-500">Reason</dt>
+            <dd className="text-slate-700">{r.reason}</dd>
           </div>
         )}
       </dl>

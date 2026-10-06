@@ -6,7 +6,7 @@ import { usePathname } from "next/navigation";
 import {
   LayoutDashboard, Users, ShieldCheck, Building2, Mail, ScrollText, Newspaper, FileText, BookOpen,
   ClipboardList, CheckSquare, Briefcase, UserSearch, CalendarClock, BadgeCheck, Bell, LogOut, Menu, X, ChevronDown,
-  UserPlus, Contact, ListChecks, ListTodo, Hourglass,
+  UserPlus, Contact, ListChecks, ListTodo, Hourglass, Plane, Fingerprint, CalendarRange, Settings2,
 } from "lucide-react";
 import { InternalUserProvider, useInternalUser } from "@/components/hcm/InternalUserContext";
 import { hcmJson, signOutInternal } from "@/lib/hcm/session";
@@ -47,6 +47,9 @@ const PEOPLE: NavGroup = {
   items: [
     { label: "Employees", href: "/admin/dashboard/employees", icon: Contact, perm: "employee.view" },
     { label: "Interns & Probation", href: "/admin/dashboard/probation", icon: Hourglass, perm: "probation.review" },
+    { label: "Team Leave", href: "/admin/dashboard/leave/team", icon: CalendarRange, perm: "leave.approve" },
+    { label: "Team Attendance", href: "/admin/dashboard/attendance/team", icon: Fingerprint, perm: "attendance.view" },
+    { label: "Leave Settings", href: "/admin/dashboard/leave/settings", icon: Settings2, perm: "leave.manage" },
   ],
 };
 
@@ -104,6 +107,8 @@ const MENUS: Record<string, NavGroup[]> = {
       items: [
         { label: "My Team", href: "/admin/dashboard/employees", icon: Contact, perm: "employee.view" },
         { label: "Interns & Probation", href: "/admin/dashboard/probation", icon: Hourglass, perm: "probation.review" },
+        { label: "Team Leave", href: "/admin/dashboard/leave/team", icon: CalendarRange, perm: "leave.approve" },
+        { label: "Team Attendance", href: "/admin/dashboard/attendance/team", icon: Fingerprint, perm: "attendance.view" },
       ],
     },
   ],
@@ -225,8 +230,17 @@ function Shell({ children }: { children: React.ReactNode }) {
   const stageItem: NavItem | null = user.stageRecord
     ? { label: user.stageRecord.type === "Intern" ? "My Internship" : "My Probation", href: "/admin/dashboard/my-stage", icon: Hourglass }
     : null;
+  const selfItems: NavItem[] = [
+    ...(user.isEmployee
+      ? [
+          { label: "My Leave", href: "/admin/dashboard/leave", icon: Plane, exact: true },
+          { label: "My Attendance", href: "/admin/dashboard/attendance", icon: Fingerprint, exact: true },
+        ]
+      : []),
+    ...(stageItem ? [stageItem] : []),
+  ];
   const groups = (MENUS[activeRole || ""] || [{ items: [HOME] }])
-    .map((g, i) => ({ ...g, items: [...g.items, ...(i === 0 && stageItem ? [stageItem] : [])].filter((item) => !item.perm || can(item.perm)) }))
+    .map((g, i) => ({ ...g, items: [...g.items, ...(i === 0 ? selfItems : [])].filter((item) => !item.perm || can(item.perm)) }))
     .filter((g) => g.items.length);
   const activeRoleName = user.roles.find((r: { code: string }) => r.code === activeRole)?.name;
 

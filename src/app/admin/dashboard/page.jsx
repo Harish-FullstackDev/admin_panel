@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import {
   ArrowRight, Briefcase, CalendarClock, CalendarDays, CheckSquare, ClipboardList, FileSignature, Inbox, MessageSquareWarning,
-  Percent, Plus, ShieldCheck, Timer, UserPlus, Users, Activity, Building2, ListTodo, FileCheck2, ShieldQuestion, UserCheck, Contact, Hourglass, Gavel, PenLine,
+  Percent, Plus, ShieldCheck, Timer, UserPlus, Users, Activity, Building2, ListTodo, FileCheck2, ShieldQuestion, UserCheck, Contact, Hourglass, Gavel, PenLine, Plane, Fingerprint, Wrench,
 } from "lucide-react";
 import { hcmJson } from "@/lib/hcm/session";
 import { useInternalUser } from "@/components/hcm/InternalUserContext";
@@ -93,11 +93,13 @@ export default function DashboardHome() {
         <Spinner label="Loading dashboard..." />
       ) : data ? (
         <div className="space-y-8">
+          {data.myAttendance && <MyDaySection att={data.myAttendance} leave={data.myLeave} />}
           {data.me && <MyProfileSection me={data.me} />}
           {data.myStage && <MyStageSection st={data.myStage} />}
           <PendingActions data={data} />
           {data.onboarding && <OnboardingSection o={data.onboarding} />}
           {data.probation && <ProbationSection p={data.probation} />}
+          {data.teamLeave && data.teamLeave.offToday.length > 0 && <OffTodaySection people={data.teamLeave.offToday} />}
           {data.recruitment && <RecruitmentSection r={data.recruitment} />}
           {data.manager && <ManagerSection m={data.manager} />}
           {data.interviewer && <InterviewerSection iv={data.interviewer} />}
@@ -160,6 +162,15 @@ function PendingActions({ data }) {
   const sentBack = data.manager?.requisitions?.["Sent back"] || 0;
   if (sentBack > 0) {
     cards.push({ key: "sentBack", href: "/admin/dashboard/requisitions?tab=action", icon: ClipboardList, count: sentBack, label: "Requisitions sent back to you", tone: "amber" });
+  }
+  if (data.teamLeave?.awaitingMe > 0) {
+    cards.push({ key: "leave", href: "/admin/dashboard/leave/team", icon: Plane, count: data.teamLeave.awaitingMe, label: "Leave requests awaiting you", tone: "amber" });
+  }
+  if (data.teamLeave?.correctionsPending > 0) {
+    cards.push({ key: "corrections", href: "/admin/dashboard/attendance/team", icon: Wrench, count: data.teamLeave.correctionsPending, label: "Attendance corrections to review", tone: "sky" });
+  }
+  if (data.myAttendance && !data.myAttendance.offDay && !data.myAttendance.record?.check_in) {
+    cards.push({ key: "checkin", href: "/admin/dashboard/attendance", icon: Fingerprint, count: "—", label: "You haven't checked in today", tone: "red" });
   }
   if (data.myTasks > 0) {
     cards.push({ key: "tasks", href: "/admin/dashboard/tasks", icon: ListTodo, count: data.myTasks, label: "Open tasks assigned to you", tone: "teal" });
@@ -536,6 +547,44 @@ function ProbationSection({ p }) {
           <StatTile icon={CalendarDays} label="Ending this month" value={p.endingThisMonth} href="/admin/dashboard/probation" />
         </div>
       </div>
+    </section>
+  );
+}
+
+function MyDaySection({ att, leave }) {
+  const t = (v) => (v ? new Date(v).toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" }) : "—");
+  return (
+    <section>
+      <SectionTitle>My day</SectionTitle>
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <StatTile
+          icon={Fingerprint}
+          label="Attendance today"
+          value={att.offDay ? att.holiday || "Off day" : att.record?.check_out ? "Checked out" : att.record?.check_in ? "Checked in" : "Not yet"}
+          hint={att.record?.check_in ? `In ${t(att.record.check_in)} · Out ${t(att.record.check_out)}` : undefined}
+          href="/admin/dashboard/attendance"
+        />
+        {(leave?.balances || []).slice(0, 3).map((b) => (
+          <StatTile key={b.code} icon={Plane} label={b.name} value={`${b.available} / ${b.total}`} hint={b.pending ? `${b.pending} pending` : "days available"} href="/admin/dashboard/leave" />
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function OffTodaySection({ people }) {
+  return (
+    <section>
+      <SectionTitle>On leave today</SectionTitle>
+      <Card>
+        <ul className="flex flex-wrap gap-2">
+          {people.map((p) => (
+            <li key={p.id} className="text-xs font-semibold px-2.5 py-1 rounded-full border bg-violet-50 text-violet-700 border-violet-200">
+              {p.full_name} · {p.leave_type} · back after {formatDate(p.end_date)}
+            </li>
+          ))}
+        </ul>
+      </Card>
     </section>
   );
 }
