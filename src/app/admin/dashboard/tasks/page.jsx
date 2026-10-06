@@ -51,7 +51,7 @@ export default function TasksPage() {
 
   return (
     <div className="p-4 sm:p-6 lg:p-8 max-w-5xl mx-auto">
-      <PageHeader title="My Tasks" description="Onboarding work assigned to you." />
+      <PageHeader title="My Tasks" description="Onboarding and internship / probation work assigned to you." />
       <ErrorBanner message={error} onClose={() => setError("")} />
 
       <div role="tablist" aria-label="Task status" className="inline-flex p-1 rounded-xl bg-slate-100 mb-5">
@@ -83,8 +83,16 @@ export default function TasksPage() {
                   <div className="flex-1 min-w-[220px]">
                     <p className="text-sm font-semibold text-slate-800">{t.title}</p>
                     <p className="text-xs text-slate-500">
-                      {t.team}
-                      {t.context && (
+                      {t.team === "Self" ? "Assigned to you" : t.team}
+                      {t.context?.kind === "stage" && (
+                        <>
+                          {" · "}
+                          <Link href={t.context.employee_id === user.id ? "/admin/dashboard/my-stage" : `/admin/dashboard/probation/${t.context.id}`} className="text-brand-teal-700 hover:underline">
+                            {t.context.employee_id === user.id ? `My ${t.context.type === "Intern" ? "internship" : "probation"}` : t.context.full_name}
+                          </Link>
+                        </>
+                      )}
+                      {t.context && t.context.kind !== "stage" && (
                         <>
                           {" · "}
                           {can("onboarding.manage") ? (

@@ -36,6 +36,13 @@ const STYLES = {
   Active: "bg-emerald-50 text-emerald-700 border-emerald-200",
   Notice: "bg-orange-50 text-orange-700 border-orange-200",
   Exited: "bg-slate-100 text-slate-500 border-slate-200",
+  // stage records / outcomes
+  "Pending approval": "bg-orange-50 text-orange-700 border-orange-200",
+  Completed: "bg-slate-100 text-slate-600 border-slate-200",
+  Confirmed: "bg-emerald-50 text-emerald-700 border-emerald-200",
+  Extended: "bg-amber-50 text-amber-700 border-amber-200",
+  Converted: "bg-brand-teal-50 text-brand-teal-700 border-brand-teal-200",
+  Released: "bg-red-50 text-red-700 border-red-200",
 };
 
 export function StatusChip({ status }) {

@@ -16,12 +16,14 @@ export async function GET(request, { params }) {
     const { data: employee } = await db.from("employees").select(EMPLOYEE_SELECT).eq("id", id).maybeSingle();
     if (!employee || !canViewEmployee(user, employee)) return jsonError("Employee not found.", 404);
 
-    const [{ data: events }, { data: documents }, { data: reports }] = await Promise.all([
+    const [{ data: events }, { data: documents }, { data: reports }, { data: letters }, { data: openStage }] = await Promise.all([
       db.from("employee_events").select("*").eq("employee_id", id).order("created_at", { ascending: false }),
       employee.joiner_id
         ? db.from("joiner_documents").select("id, joiner_id, type_code, name, required, status, file_name, verified_at").eq("joiner_id", employee.joiner_id)
         : { data: [] },
       db.from("employees").select("id, full_name, designation, employee_code, stage").eq("manager_id", id).order("full_name"),
+      db.from("letters").select("id, type, title, issued_at").eq("employee_id", id).order("issued_at", { ascending: false }),
+      db.from("stage_records").select("id, type, status").eq("employee_id", id).in("status", ["Active", "Pending approval"]).maybeSingle(),
     ]);
     const actorIds = [...new Set((events || []).map((e) => e.actor_id).filter(Boolean))];
     const { data: actors } = actorIds.length ? await db.from("internal_users").select("id, full_name").in("id", actorIds) : { data: [] };
@@ -33,6 +35,8 @@ export async function GET(request, { params }) {
       events: (events || []).map((e) => ({ ...e, actor_name: names[e.actor_id] || null })),
       documents: hasPermission(user, "employee.manage") || hasPermission(user, "onboarding.manage") || id === user.id ? documents || [] : [],
       directReports: reports || [],
+      letters: letters || [],
+      stageRecord: openStage || null,
       canEdit: hasPermission(user, "employee.manage"),
     });
   } catch (err) {
@@ -56,6 +60,10 @@ export async function PATCH(request, { params }) {
       if (key in body) update[key] = typeof body[key] === "string" ? body[key].trim() || null : body[key] ?? null;
     }
     if ("stage" in update && !JOIN_STAGES.includes(update.stage)) return jsonError("Invalid stage.");
+    if ((("stage" in update && update.stage !== employee.stage) || ("stage_end_date" in update && update.stage_end_date !== employee.stage_end_date))) {
+      const { data: open } = await db.from("stage_records").select("id").eq("employee_id", id).in("status", ["Active", "Pending approval"]).maybeSingle();
+      if (open) return jsonError("This person has an open intern/probation record. Change the stage from the probation tracker.");
+    }
     if (update.manager_id && update.manager_id === id) return jsonError("An employee cannot be their own manager.");
     if ((update.stage ?? employee.stage) === "Full-time") update.stage_end_date = null;
     if (update.stage_end_date && update.stage_end_date <= employee.joining_date) return jsonError("Stage end date must be after the joining date.");

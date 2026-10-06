@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { CheckCircle2, ClipboardList, CornerUpLeft, FileSignature, Forward, Inbox, XCircle } from "lucide-react";
+import { CheckCircle2, ClipboardList, CornerUpLeft, FileSignature, Forward, Inbox, XCircle, Hourglass } from "lucide-react";
 import { hcmJson } from "@/lib/hcm/session";
 import { useInternalUser } from "@/components/hcm/InternalUserContext";
 import {
@@ -76,12 +76,14 @@ function ApprovalsInbox() {
       {loading ? (
         <Spinner />
       ) : sorted.length === 0 ? (
-        <EmptyState icon={Inbox} title="Nothing waiting for you" description="New requisitions and above-band offers that need your approval will appear here." />
+        <EmptyState icon={Inbox} title="Nothing waiting for you" description="Requisitions, above-band offers and probation extensions or releases that need your approval appear here." />
       ) : (
         <ul className="space-y-4">
           {sorted.map((item) => (
             <li key={item.id}>
-              {item.entity_type === "offer" ? (
+              {item.entity_type === "stage_record" ? (
+                <StageOutcomeCard item={item} />
+              ) : item.entity_type === "offer" ? (
                 <OfferCard item={item} onAction={(action) => setModal({ item, action })} />
               ) : (
                 <RequisitionCard item={item} onAction={(action) => setModal({ item, action })} />
@@ -345,5 +347,55 @@ function DecisionModal({ item, action, onClose, onDone }) {
         </Field>
       </div>
     </Modal>
+  );
+}
+
+function StageOutcomeCard({ item }) {
+  const r = item.entity;
+  const e = r.employees || {};
+  const detail =
+    r.proposed_outcome === "Extended"
+      ? `Extend until ${formatDate(r.proposed_end_date)} (currently ${formatDate(r.end_date)})`
+      : r.proposed_outcome === "Released"
+        ? `Release · last working day ${formatDate(r.proposed_last_day)}`
+        : r.proposed_outcome;
+  return (
+    <CardShell
+      icon={Hourglass}
+      kind={`${r.type} outcome`}
+      stepLabel="CHRO approval"
+      item={item}
+      title={`${r.proposed_outcome === "Extended" ? "Extend" : "Release"}: ${e.full_name || "Employee"}`}
+      subtitle={[e.designation, e.employee_code].filter(Boolean).join(" · ")}
+      actions={
+        <Link
+          href={`/admin/dashboard/probation/${r.id}`}
+          className="inline-flex items-center h-10 px-4 rounded-xl bg-brand-teal-500 hover:bg-brand-teal-600 text-white text-sm font-semibold"
+        >
+          Review and decide
+        </Link>
+      }
+    >
+      <dl className="grid sm:grid-cols-3 gap-3 text-sm">
+        <div>
+          <dt className="text-xs text-slate-500">Proposal</dt>
+          <dd className="font-semibold text-slate-800">{detail}</dd>
+        </div>
+        <div>
+          <dt className="text-xs text-slate-500">Manager recommendation</dt>
+          <dd className="text-slate-800">{r.recommendation || "—"}</dd>
+        </div>
+        <div>
+          <dt className="text-xs text-slate-500">Previous extensions</dt>
+          <dd className="text-slate-800">{r.extension_count}</dd>
+        </div>
+        {r.proposed_note && (
+          <div className="sm:col-span-3">
+            <dt className="text-xs text-slate-500">HR note</dt>
+            <dd className="text-slate-700 whitespace-pre-line">{r.proposed_note}</dd>
+          </div>
+        )}
+      </dl>
+    </CardShell>
   );
 }

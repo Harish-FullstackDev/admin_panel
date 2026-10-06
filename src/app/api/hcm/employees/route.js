@@ -4,6 +4,7 @@ import { requirePermission, hasPermission, jsonError, serverError } from "@/lib/
 import { logAudit } from "@/lib/hcm/audit";
 import { JOIN_STAGES } from "@/lib/hcm/onboarding";
 import { EMPLOYEE_SELECT, scopeEmployees } from "@/lib/hcm/employees";
+import { ensureStageRecord } from "@/lib/hcm/stage";
 
 // GET: directory, scoped by employee.view. Filters: department, location,
 // manager, stage, status, q. With employee.manage, also returns internal
@@ -52,6 +53,9 @@ export async function POST(request) {
     const stage = body.stage || "Full-time";
     if (!JOIN_STAGES.includes(stage)) return jsonError("Invalid stage.");
     if (body.manager_id && body.manager_id === user.id) return jsonError("An employee cannot be their own manager.");
+    if (stage !== "Full-time" && !(body.stage_end_date > body.joining_date)) {
+      return jsonError(`${stage === "Intern" ? "Internship" : "Probation"} end date must be after the joining date.`);
+    }
 
     const row = {
       id: user.id,
@@ -77,6 +81,7 @@ export async function POST(request) {
       employee_id: user.id, type: "join", effective_date: row.joining_date, after: row, note: "Added existing staff", actor_id: auth.user.id,
     });
     await logAudit({ actor: auth.user, action: "employee.create", entityType: "employee", entityId: user.id, after: created, request });
+    await ensureStageRecord(created, auth.user);
     return NextResponse.json({ success: true, employee: created }, { status: 201 });
   } catch (err) {
     return serverError("Employees POST", err);

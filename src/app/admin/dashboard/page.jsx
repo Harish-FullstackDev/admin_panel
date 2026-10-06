@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import {
   ArrowRight, Briefcase, CalendarClock, CalendarDays, CheckSquare, ClipboardList, FileSignature, Inbox, MessageSquareWarning,
-  Percent, Plus, ShieldCheck, Timer, UserPlus, Users, Activity, Building2, ListTodo, FileCheck2, ShieldQuestion, UserCheck, Contact,
+  Percent, Plus, ShieldCheck, Timer, UserPlus, Users, Activity, Building2, ListTodo, FileCheck2, ShieldQuestion, UserCheck, Contact, Hourglass, Gavel, PenLine,
 } from "lucide-react";
 import { hcmJson } from "@/lib/hcm/session";
 import { useInternalUser } from "@/components/hcm/InternalUserContext";
@@ -94,8 +94,10 @@ export default function DashboardHome() {
       ) : data ? (
         <div className="space-y-8">
           {data.me && <MyProfileSection me={data.me} />}
+          {data.myStage && <MyStageSection st={data.myStage} />}
           <PendingActions data={data} />
           {data.onboarding && <OnboardingSection o={data.onboarding} />}
+          {data.probation && <ProbationSection p={data.probation} />}
           {data.recruitment && <RecruitmentSection r={data.recruitment} />}
           {data.manager && <ManagerSection m={data.manager} />}
           {data.interviewer && <InterviewerSection iv={data.interviewer} />}
@@ -167,6 +169,15 @@ function PendingActions({ data }) {
   }
   if (data.onboarding?.readyToConvert > 0) {
     cards.push({ key: "convert", href: "/admin/dashboard/onboarding?status=Ready", icon: UserCheck, count: data.onboarding.readyToConvert, label: "Joiners ready to convert", tone: "teal" });
+  }
+  if (data.probation?.reviewsDue > 0) {
+    cards.push({ key: "stageReviews", href: "/admin/dashboard/probation", icon: Hourglass, count: data.probation.reviewsDue, label: "Intern / probation reviews due soon", tone: "amber" });
+  }
+  if (data.probation?.awaitingDecision > 0 && data.probation.canDecide) {
+    cards.push({ key: "stageDecide", href: "/admin/dashboard/probation", icon: Gavel, count: data.probation.awaitingDecision, label: "Outcomes to decide", tone: "teal" });
+  }
+  if (data.myStage && !data.myStage.updatedThisWeek && data.myStage.status === "Active") {
+    cards.push({ key: "weekly", href: "/admin/dashboard/my-stage", icon: PenLine, count: 1, label: "Weekly update due this week", tone: "sky" });
   }
   if (data.interviewer?.feedbackDue > 0) {
     cards.push({ key: "feedback", href: "/admin/dashboard/interviews", icon: MessageSquareWarning, count: data.interviewer.feedbackDue, label: "Interview feedback due", tone: "red" });
@@ -461,6 +472,68 @@ function OnboardingSection({ o }) {
         <div className="grid grid-cols-2 lg:grid-cols-1 gap-4">
           <StatTile icon={CalendarDays} label="Joining this week" value={o.joinersThisWeek} href="/admin/dashboard/onboarding" />
           <StatTile icon={ShieldQuestion} label="Background checks pending" value={o.bgvPending} href="/admin/dashboard/onboarding" />
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function MyStageSection({ st }) {
+  const label = st.type === "Intern" ? "internship" : "probation";
+  const end = new Date(`${st.end_date}T00:00:00`);
+  const now = new Date();
+  const left = Math.round((end - new Date(now.getFullYear(), now.getMonth(), now.getDate())) / 86400000);
+  return (
+    <section>
+      <SectionTitle>My {label}</SectionTitle>
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <StatTile icon={Hourglass} label="Days remaining" value={Math.max(left, 0)} hint={`Ends ${formatDate(st.end_date)}`} href="/admin/dashboard/my-stage" />
+        <StatTile icon={CalendarDays} label="Mid-point review" value={formatDate(st.mid_review_date)} />
+        <StatTile icon={CalendarDays} label="Final review" value={formatDate(st.final_review_date)} />
+        <StatTile icon={PenLine} label="Self-assessment" value={st.selfSubmitted ? "Submitted" : "Pending"} href="/admin/dashboard/my-stage" hint={st.mentor?.full_name ? `Mentor: ${st.mentor.full_name}` : undefined} />
+      </div>
+    </section>
+  );
+}
+
+function ProbationSection({ p }) {
+  return (
+    <section>
+      <SectionTitle>Interns & probation</SectionTitle>
+      <div className="grid lg:grid-cols-3 gap-4">
+        <Card
+          title="Ending soonest"
+          className="lg:col-span-2"
+          actions={
+            <Link href="/admin/dashboard/probation" className="text-xs font-semibold text-brand-teal-600 hover:underline">
+              View all
+            </Link>
+          }
+        >
+          {p.upcoming.length === 0 ? (
+            <p className="text-sm text-slate-400">No one is on internship or probation.</p>
+          ) : (
+            <ul className="divide-y divide-slate-100">
+              {p.upcoming.map((r) => (
+                <li key={r.id} className="flex flex-wrap items-center justify-between gap-2 py-2.5 first:pt-0 last:pb-0">
+                  <div>
+                    <Link href={`/admin/dashboard/probation/${r.id}`} className="text-sm font-semibold text-slate-800 hover:text-brand-teal-700">
+                      {r.full_name}
+                    </Link>
+                    <p className="text-xs text-slate-500">{r.type}</p>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-sm text-slate-700">{formatDate(r.end_date)}</p>
+                    {r.status !== "Active" && <p className="text-xs text-orange-600 font-semibold">{r.status}</p>}
+                  </div>
+                </li>
+              ))}
+            </ul>
+          )}
+        </Card>
+        <div className="grid grid-cols-2 lg:grid-cols-1 gap-4">
+          <StatTile icon={Hourglass} label="In progress" value={p.open} hint={`${p.interns} intern${p.interns === 1 ? "" : "s"}`} href="/admin/dashboard/probation" />
+          <StatTile icon={CalendarDays} label="Ending this month" value={p.endingThisMonth} href="/admin/dashboard/probation" />
         </div>
       </div>
     </section>

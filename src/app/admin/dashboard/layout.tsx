@@ -6,7 +6,7 @@ import { usePathname } from "next/navigation";
 import {
   LayoutDashboard, Users, ShieldCheck, Building2, Mail, ScrollText, Newspaper, FileText, BookOpen,
   ClipboardList, CheckSquare, Briefcase, UserSearch, CalendarClock, BadgeCheck, Bell, LogOut, Menu, X, ChevronDown,
-  UserPlus, Contact, ListChecks, ListTodo,
+  UserPlus, Contact, ListChecks, ListTodo, Hourglass,
 } from "lucide-react";
 import { InternalUserProvider, useInternalUser } from "@/components/hcm/InternalUserContext";
 import { hcmJson, signOutInternal } from "@/lib/hcm/session";
@@ -38,8 +38,15 @@ const ONBOARDING: NavGroup = {
   title: "Onboarding",
   items: [
     { label: "Pre-joining", href: "/admin/dashboard/onboarding", icon: UserPlus, perm: "onboarding.manage", exact: true },
-    { label: "Employees", href: "/admin/dashboard/employees", icon: Contact, perm: "employee.view" },
     { label: "Checklists", href: "/admin/dashboard/onboarding/templates", icon: ListChecks, perm: "onboarding.manage" },
+  ],
+};
+
+const PEOPLE: NavGroup = {
+  title: "People",
+  items: [
+    { label: "Employees", href: "/admin/dashboard/employees", icon: Contact, perm: "employee.view" },
+    { label: "Interns & Probation", href: "/admin/dashboard/probation", icon: Hourglass, perm: "probation.review" },
   ],
 };
 
@@ -63,6 +70,7 @@ const MENUS: Record<string, NavGroup[]> = {
     { items: [HOME, MY_TASKS, { label: "Approvals", href: "/admin/dashboard/approvals", icon: CheckSquare, perm: "requisition.approve" }] },
     { title: "Recruitment", items: HR_RECRUITMENT },
     ONBOARDING,
+    PEOPLE,
     {
       title: "Settings",
       items: [
@@ -75,10 +83,11 @@ const MENUS: Record<string, NavGroup[]> = {
     { items: [HOME, MY_TASKS] },
     { title: "Recruitment", items: HR_RECRUITMENT },
     ONBOARDING,
+    PEOPLE,
     { title: "Settings", items: [{ label: "Email Templates", href: "/admin/dashboard/templates", icon: Mail, perm: "template.manage" }] },
     CONTENT,
   ],
-  hr_executive: [{ items: [HOME, MY_TASKS] }, { title: "Recruitment", items: HR_RECRUITMENT }, ONBOARDING],
+  hr_executive: [{ items: [HOME, MY_TASKS] }, { title: "Recruitment", items: HR_RECRUITMENT }, ONBOARDING, PEOPLE],
   hiring_manager: [
     { items: [HOME, MY_TASKS] },
     {
@@ -90,7 +99,13 @@ const MENUS: Record<string, NavGroup[]> = {
         { label: "Interviews", href: "/admin/dashboard/interviews", icon: CalendarClock, perm: "interview.view" },
       ],
     },
-    { title: "People", items: [{ label: "My Team", href: "/admin/dashboard/employees", icon: Contact, perm: "employee.view" }] },
+    {
+      title: "People",
+      items: [
+        { label: "My Team", href: "/admin/dashboard/employees", icon: Contact, perm: "employee.view" },
+        { label: "Interns & Probation", href: "/admin/dashboard/probation", icon: Hourglass, perm: "probation.review" },
+      ],
+    },
   ],
   interviewer: [{ items: [HOME, MY_TASKS, { label: "Interviews", href: "/admin/dashboard/interviews", icon: CalendarClock, perm: "interview.view" }] }],
   employee: [{ items: [HOME, MY_TASKS] }],
@@ -206,8 +221,12 @@ function Shell({ children }: { children: React.ReactNode }) {
     );
   }
 
+  // Anyone currently on internship / probation gets their own tracker.
+  const stageItem: NavItem | null = user.stageRecord
+    ? { label: user.stageRecord.type === "Intern" ? "My Internship" : "My Probation", href: "/admin/dashboard/my-stage", icon: Hourglass }
+    : null;
   const groups = (MENUS[activeRole || ""] || [{ items: [HOME] }])
-    .map((g) => ({ ...g, items: g.items.filter((item) => !item.perm || can(item.perm)) }))
+    .map((g, i) => ({ ...g, items: [...g.items, ...(i === 0 && stageItem ? [stageItem] : [])].filter((item) => !item.perm || can(item.perm)) }))
     .filter((g) => g.items.length);
   const activeRoleName = user.roles.find((r: { code: string }) => r.code === activeRole)?.name;
 

@@ -3,14 +3,24 @@
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
-import { ArrowLeft, Eye, Pencil } from "lucide-react";
+import { ArrowLeft, Eye, FileText, Hourglass, Pencil } from "lucide-react";
 import { hcmJson } from "@/lib/hcm/session";
 import { useInternalUser } from "@/components/hcm/InternalUserContext";
 import { Card, Button, Field, Input, Textarea, Select, Spinner, ErrorBanner, Modal, Badge, formatDate } from "@/components/hcm/ui";
 import { StatusChip, useOrgLists, JOIN_STAGES } from "@/components/hcm/onboarding";
+import { LetterModal } from "@/components/hcm/stage";
 
-const TABS = ["Job", "Personal", "Documents", "Timeline"];
+const TABS = ["Job", "Personal", "Documents", "Letters", "Timeline"];
 const EMPLOYMENT_TYPES = ["Full-time", "Part-time", "Contract", "Freelancer", "Internship"];
+
+const EVENT_LABELS = {
+  join: "Joined",
+  update: "Job details changed",
+  confirm: "Confirmed",
+  extend: "Period extended",
+  convert: "Converted",
+  release: "Released",
+};
 
 const FIELD_LABELS = {
   designation: "Designation",
@@ -21,6 +31,8 @@ const FIELD_LABELS = {
   employment_type: "Employment type",
   stage: "Stage",
   stage_end_date: "Stage end date",
+  status: "Status",
+  last_working_date: "Last working day",
   phone: "Phone",
   personal_email: "Personal email",
 };
@@ -46,6 +58,7 @@ function Profile() {
   const [error, setError] = useState("");
   const [tab, setTab] = useState("Job");
   const [editing, setEditing] = useState(false);
+  const [letterId, setLetterId] = useState(null);
 
   const load = useCallback(async () => {
     try {
@@ -60,7 +73,7 @@ function Profile() {
   }, [load]);
 
   if (!data) return error ? <ErrorBanner message={error} /> : <Spinner />;
-  const { employee: e, events, documents, directReports, canEdit } = data;
+  const { employee: e, events, documents, directReports, canEdit, letters, stageRecord } = data;
 
   const viewDoc = async (doc) => {
     setError("");
@@ -97,11 +110,21 @@ function Profile() {
             </p>
           </div>
         </div>
-        {canEdit && (
-          <Button variant="secondary" onClick={() => setEditing(true)}>
-            <Pencil className="w-4 h-4" aria-hidden="true" /> Edit job details
-          </Button>
-        )}
+        <div className="flex flex-wrap gap-2">
+          {stageRecord && (can("probation.review") || can("probation.manage")) && (
+            <Link
+              href={`/admin/dashboard/probation/${stageRecord.id}`}
+              className="inline-flex items-center gap-1.5 h-10 px-4 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-sm font-semibold text-slate-700"
+            >
+              <Hourglass className="w-4 h-4" aria-hidden="true" /> {stageRecord.type} tracker
+            </Link>
+          )}
+          {canEdit && (
+            <Button variant="secondary" onClick={() => setEditing(true)}>
+              <Pencil className="w-4 h-4" aria-hidden="true" /> Edit job details
+            </Button>
+          )}
+        </div>
       </div>
       <ErrorBanner message={error} onClose={() => setError("")} />
 
@@ -200,6 +223,28 @@ function Profile() {
         </Card>
       )}
 
+      {tab === "Letters" && (
+        <Card title="Letters">
+          {letters.length === 0 ? (
+            <p className="text-sm text-slate-500">No letters issued yet.</p>
+          ) : (
+            <ul className="divide-y divide-slate-100 -my-2">
+              {letters.map((l) => (
+                <li key={l.id} className="py-2.5 flex items-center justify-between gap-3">
+                  <div>
+                    <p className="text-sm font-semibold text-slate-800">{l.title}</p>
+                    <p className="text-xs text-slate-500">Issued {formatDate(l.issued_at)}</p>
+                  </div>
+                  <Button size="sm" variant="secondary" onClick={() => setLetterId(l.id)}>
+                    <FileText className="w-3.5 h-3.5" aria-hidden="true" /> Open
+                  </Button>
+                </li>
+              ))}
+            </ul>
+          )}
+        </Card>
+      )}
+
       {tab === "Timeline" && (
         <Card>
           {events.length === 0 ? (
@@ -211,10 +256,10 @@ function Profile() {
                   <span className="mt-1.5 w-2 h-2 rounded-full bg-brand-teal-400 shrink-0" aria-hidden="true" />
                   <div>
                     <p className="text-sm font-semibold text-slate-800">
-                      {ev.type === "join" ? "Joined" : ev.type === "update" ? "Job details changed" : ev.type}
+                      {EVENT_LABELS[ev.type] || ev.type}
                       <span className="font-normal text-slate-500"> · effective {formatDate(ev.effective_date)}</span>
                     </p>
-                    {ev.type === "update" && ev.after && (
+                    {ev.type !== "join" && ev.after && (
                       <ul className="text-xs text-slate-600 mt-1 space-y-0.5">
                         {Object.keys(ev.after).map((k) => (
                           <li key={k}>
@@ -235,6 +280,7 @@ function Profile() {
         </Card>
       )}
 
+      {letterId && <LetterModal letterId={letterId} onClose={() => setLetterId(null)} />}
       {editing && (
         <EditJobDialog
           employee={e}

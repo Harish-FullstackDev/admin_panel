@@ -5,6 +5,7 @@ import { logAudit } from "@/lib/hcm/audit";
 import { queueEmail, notifyUsers } from "@/lib/hcm/notify";
 import { inviteInternalUser, InviteError } from "@/lib/hcm/users";
 import { joinerReadiness, addDays, JOIN_STAGES } from "@/lib/hcm/onboarding";
+import { ensureStageRecord } from "@/lib/hcm/stage";
 
 // POST: Day 1. Creates the official account (role: employee), the employee
 // record and the join event. Returns the one-time invite link to share.
@@ -76,6 +77,7 @@ export async function POST(request, { params }) {
       actor_id: auth.user.id,
     });
     await db.from("joiners").update({ status: "Joined", employee_id: userId, joining_date: joiningDate }).eq("id", id);
+    await ensureStageRecord(created, auth.user, { mentorId: joiner.buddy_id });
 
     await logAudit({
       actor: auth.user,

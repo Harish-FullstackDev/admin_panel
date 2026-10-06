@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { createHcmAdminClient } from "@/lib/candidateSupabase";
 import { getInternalUser, hasPermission, serverError } from "@/lib/hcm/auth";
 import { managedJobIds } from "@/lib/hcm/recruitment";
+import { remindDueReviews, weekStart } from "@/lib/hcm/stage";
 
 const count = async (query) => {
   const { count: n } = await query;
@@ -128,6 +129,33 @@ export async function GET(request) {
       out.onboarding = { joinersThisWeek, docsAwaiting, bgvPending, readyToConvert, upcoming: upcomingJoiners || [] };
     }
 
+    if (hasPermission(user, "probation.manage") || hasPermission(user, "probation.review")) {
+      await remindDueReviews();
+      const all = hasPermission(user, "probation.manage") || user.permissions["probation.review"] === "all";
+      const { data: open } = await db
+        .from("stage_records")
+        .select("id, type, status, end_date, mid_review_date, final_review_date, mentor_id, recommendation, employees!inner(id, full_name, manager_id), stage_reviews(type, submitted_at)")
+        .in("status", ["Active", "Pending approval"])
+        .order("end_date");
+      const mine = (open || []).filter((r) => all || r.mentor_id === user.id || r.employees.manager_id === user.id);
+      const horizon = new Date(now.getTime() + 15 * 86400000).toISOString().slice(0, 10);
+      const monthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0).toISOString().slice(0, 10);
+      const reviewsDue = mine.filter((r) => {
+        const done = new Set((r.stage_reviews || []).filter((x) => x.submitted_at).map((x) => x.type));
+        return (!done.has("mid") && r.mid_review_date && r.mid_review_date <= horizon) || (!done.has("final") && r.final_review_date && r.final_review_date <= horizon);
+      });
+      out.probation = {
+        open: mine.length,
+        interns: mine.filter((r) => r.type === "Intern").length,
+        reviewsDue: reviewsDue.length,
+        pendingApproval: mine.filter((r) => r.status === "Pending approval").length,
+        awaitingDecision: mine.filter((r) => r.status === "Active" && r.recommendation).length,
+        canDecide: hasPermission(user, "probation.manage"),
+        endingThisMonth: mine.filter((r) => r.end_date <= monthEnd).length,
+        upcoming: mine.slice(0, 6).map((r) => ({ id: r.id, type: r.type, status: r.status, end_date: r.end_date, full_name: r.employees.full_name })),
+      };
+    }
+
     const [myTasks, { data: me }] = await Promise.all([
       count(db.from("tasks").select("id", head).eq("assignee_id", user.id).eq("status", "Open")),
       db.from("employees")
@@ -137,6 +165,22 @@ export async function GET(request) {
     ]);
     out.myTasks = myTasks;
     out.me = me || null;
+    if (me) {
+      const { data: stage } = await db
+        .from("stage_records")
+        .select("id, type, status, start_date, end_date, mid_review_date, final_review_date, mentor:internal_users!stage_records_mentor_id_fkey(full_name), stage_updates(week_start), stage_reviews(type, submitted_at)")
+        .eq("employee_id", user.id)
+        .in("status", ["Active", "Pending approval"])
+        .maybeSingle();
+      if (stage) {
+        const { stage_updates: updates, stage_reviews: reviews, ...rest } = stage;
+        out.myStage = {
+          ...rest,
+          updatedThisWeek: (updates || []).some((u) => u.week_start === weekStart()),
+          selfSubmitted: (reviews || []).some((r) => r.type === "self" && r.submitted_at),
+        };
+      }
+    }
 
     return NextResponse.json({ success: true, ...out });
   } catch (err) {
