@@ -6,6 +6,7 @@ import { usePathname } from "next/navigation";
 import {
   LayoutDashboard, Users, ShieldCheck, Building2, Mail, ScrollText, Newspaper, FileText, BookOpen,
   ClipboardList, CheckSquare, Briefcase, UserSearch, CalendarClock, BadgeCheck, Bell, LogOut, Menu, X, ChevronDown,
+  UserPlus, Contact, ListChecks, ListTodo,
 } from "lucide-react";
 import { InternalUserProvider, useInternalUser } from "@/components/hcm/InternalUserContext";
 import { hcmJson, signOutInternal } from "@/lib/hcm/session";
@@ -31,10 +32,20 @@ const CONTENT: NavGroup = {
 };
 
 const HOME: NavItem = { label: "Dashboard", href: "/admin/dashboard", icon: LayoutDashboard, exact: true };
+const MY_TASKS: NavItem = { label: "My Tasks", href: "/admin/dashboard/tasks", icon: ListTodo };
+
+const ONBOARDING: NavGroup = {
+  title: "Onboarding",
+  items: [
+    { label: "Pre-joining", href: "/admin/dashboard/onboarding", icon: UserPlus, perm: "onboarding.manage", exact: true },
+    { label: "Employees", href: "/admin/dashboard/employees", icon: Contact, perm: "employee.view" },
+    { label: "Checklists", href: "/admin/dashboard/onboarding/templates", icon: ListChecks, perm: "onboarding.manage" },
+  ],
+};
 
 const MENUS: Record<string, NavGroup[]> = {
   super_admin: [
-    { items: [HOME] },
+    { items: [HOME, MY_TASKS] },
     {
       title: "Administration",
       items: [
@@ -43,13 +54,15 @@ const MENUS: Record<string, NavGroup[]> = {
         { label: "Organization", href: "/admin/dashboard/org", icon: Building2, perm: "org.manage" },
         { label: "Email Templates", href: "/admin/dashboard/templates", icon: Mail, perm: "template.manage" },
         { label: "Audit Logs", href: "/admin/dashboard/audit", icon: ScrollText, perm: "audit.view" },
+        { label: "Employees", href: "/admin/dashboard/employees", icon: Contact, perm: "employee.view" },
       ],
     },
     CONTENT,
   ],
   chro: [
-    { items: [HOME, { label: "Approvals", href: "/admin/dashboard/approvals", icon: CheckSquare, perm: "requisition.approve" }] },
+    { items: [HOME, MY_TASKS, { label: "Approvals", href: "/admin/dashboard/approvals", icon: CheckSquare, perm: "requisition.approve" }] },
     { title: "Recruitment", items: HR_RECRUITMENT },
+    ONBOARDING,
     {
       title: "Settings",
       items: [
@@ -59,14 +72,15 @@ const MENUS: Record<string, NavGroup[]> = {
     },
   ],
   hr_manager: [
-    { items: [HOME] },
+    { items: [HOME, MY_TASKS] },
     { title: "Recruitment", items: HR_RECRUITMENT },
+    ONBOARDING,
     { title: "Settings", items: [{ label: "Email Templates", href: "/admin/dashboard/templates", icon: Mail, perm: "template.manage" }] },
     CONTENT,
   ],
-  hr_executive: [{ items: [HOME] }, { title: "Recruitment", items: HR_RECRUITMENT }],
+  hr_executive: [{ items: [HOME, MY_TASKS] }, { title: "Recruitment", items: HR_RECRUITMENT }, ONBOARDING],
   hiring_manager: [
-    { items: [HOME] },
+    { items: [HOME, MY_TASKS] },
     {
       title: "Hiring",
       items: [
@@ -76,8 +90,10 @@ const MENUS: Record<string, NavGroup[]> = {
         { label: "Interviews", href: "/admin/dashboard/interviews", icon: CalendarClock, perm: "interview.view" },
       ],
     },
+    { title: "People", items: [{ label: "My Team", href: "/admin/dashboard/employees", icon: Contact, perm: "employee.view" }] },
   ],
-  interviewer: [{ items: [HOME, { label: "Interviews", href: "/admin/dashboard/interviews", icon: CalendarClock, perm: "interview.view" }] }],
+  interviewer: [{ items: [HOME, MY_TASKS, { label: "Interviews", href: "/admin/dashboard/interviews", icon: CalendarClock, perm: "interview.view" }] }],
+  employee: [{ items: [HOME, MY_TASKS] }],
 };
 
 function isActive(pathname: string, item: NavItem) {

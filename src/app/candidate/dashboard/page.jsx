@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
-import { Loader2, Briefcase, CalendarDays, CalendarClock, FileSignature, CheckCircle2, BellRing } from "lucide-react";
+import { Loader2, Briefcase, CalendarDays, CalendarClock, FileSignature, CheckCircle2, BellRing, Upload } from "lucide-react";
 import PortalShell from "@/components/CandidatePortal/PortalShell";
 import StatusBadge from "@/components/CandidatePortal/StatusBadge";
 import { useCandidateSession } from "@/components/CandidatePortal/useCandidateSession";
@@ -12,6 +12,7 @@ import { Modal, Button, Field, Textarea, ErrorBanner } from "@/components/hcm/ui
 const ACTION_LABELS = {
   confirm_interview: { text: "Confirm interview", icon: CalendarClock },
   respond_offer: { text: "Respond to offer", icon: FileSignature },
+  upload_documents: { text: "Upload documents", icon: Upload },
 };
 
 const MODE_LABELS = { online: "Online", onsite: "Onsite", phone: "Phone" };
@@ -49,7 +50,7 @@ function Progress({ label }) {
       {done && (
         <p className="mt-3 inline-flex items-center gap-1.5 text-xs font-medium text-emerald-700">
           <CheckCircle2 className="w-4 h-4" aria-hidden="true" />
-          {label === "Hired" ? "Congratulations and welcome aboard! Our team will be in touch about your first day." : "Congratulations! An offer has been made. Review it on the Offers page."}
+          {label === "Hired" ? "Congratulations and welcome aboard! See the Joining page for your documents and first-day details." : "Congratulations! An offer has been made. Review it on the Offers page."}
         </p>
       )}
     </div>
@@ -166,7 +167,12 @@ function DashboardContent() {
             {pending.map((p) => (
               <li key={`${p.app.id}-${p.type}`} className="flex flex-wrap items-center justify-between gap-3 rounded-xl bg-white border border-amber-100 px-4 py-2.5">
                 <span className="text-sm text-slate-700">
-                  {p.type === "confirm_interview" ? "Confirm your interview" : "Respond to your offer"} for{" "}
+                  {p.type === "confirm_interview"
+                    ? "Confirm your interview"
+                    : p.type === "upload_documents"
+                      ? `Upload ${p.count} joining document${p.count > 1 ? "s" : ""}`
+                      : "Respond to your offer"}{" "}
+                  for{" "}
                   <strong className="font-semibold text-slate-900">{p.app.position}</strong>
                 </span>
                 <ActionLink action={p} />

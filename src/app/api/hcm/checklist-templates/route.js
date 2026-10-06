@@ -1,0 +1,96 @@
+import { NextResponse } from "next/server";
+import { createHcmAdminClient } from "@/lib/candidateSupabase";
+import { requirePermission, jsonError, serverError } from "@/lib/hcm/auth";
+import { logAudit } from "@/lib/hcm/audit";
+import { TASK_TEAMS } from "@/lib/hcm/onboarding";
+
+function cleanTemplate(body) {
+  const name = String(body.name || "").trim();
+  if (!name) return { error: "Template name is required." };
+  if (!Array.isArray(body.items)) return { error: "Add at least one task." };
+  const items = body.items
+    .map((item) => ({
+      title: String(item?.title || "").trim(),
+      team: TASK_TEAMS.includes(item?.team) ? item.team : "HR",
+      due_offset_days: Number.isFinite(Number(item?.due_offset_days)) ? Math.round(Number(item.due_offset_days)) : 0,
+      ...(item?.assignee_id ? { assignee_id: item.assignee_id } : {}),
+      ...(item?.description?.trim() ? { description: item.description.trim() } : {}),
+    }))
+    .filter((item) => item.title);
+  if (!items.length) return { error: "Add at least one task." };
+  return {
+    value: {
+      name,
+      employment_type: body.employment_type || null,
+      is_default: Boolean(body.is_default),
+      items,
+    },
+  };
+}
+
+export async function GET(request) {
+  const auth = await requirePermission(request, "onboarding.manage");
+  if (auth.error) return auth.error;
+  try {
+    const { data, error } = await createHcmAdminClient().from("checklist_templates").select("*").order("archived").order("name");
+    if (error) throw error;
+    return NextResponse.json({ success: true, templates: data });
+  } catch (err) {
+    return serverError("Checklist templates GET", err);
+  }
+}
+
+async function clearOtherDefaults(db, keepId) {
+  await db.from("checklist_templates").update({ is_default: false }).neq("id", keepId).eq("is_default", true);
+}
+
+export async function POST(request) {
+  const auth = await requirePermission(request, "onboarding.manage");
+  if (auth.error) return auth.error;
+  try {
+    const { value, error: invalid } = cleanTemplate(await request.json());
+    if (invalid) return jsonError(invalid);
+    const db = createHcmAdminClient();
+    const { data, error } = await db.from("checklist_templates").insert(value).select().single();
+    if (error) {
+      if (error.code === "23505") return jsonError("A template with this name already exists.", 409);
+      throw error;
+    }
+    if (data.is_default) await clearOtherDefaults(db, data.id);
+    await logAudit({ actor: auth.user, action: "checklist_template.create", entityType: "checklist_template", entityId: data.id, after: data, request });
+    return NextResponse.json({ success: true, template: data }, { status: 201 });
+  } catch (err) {
+    return serverError("Checklist templates POST", err);
+  }
+}
+
+// PATCH { id, ...fields } or { id, archived }
+export async function PATCH(request) {
+  const auth = await requirePermission(request, "onboarding.manage");
+  if (auth.error) return auth.error;
+  try {
+    const body = await request.json();
+    const db = createHcmAdminClient();
+    const { data: before } = await db.from("checklist_templates").select("*").eq("id", body.id).maybeSingle();
+    if (!before) return jsonError("Template not found.", 404);
+
+    let update;
+    if (Object.keys(body).every((k) => k === "id" || k === "archived")) {
+      update = { archived: Boolean(body.archived), ...(body.archived ? { is_default: false } : {}) };
+    } else {
+      const { value, error: invalid } = cleanTemplate(body);
+      if (invalid) return jsonError(invalid);
+      update = value;
+    }
+    const { data, error } = await db.from("checklist_templates").update(update).eq("id", body.id).select().single();
+    if (error) {
+      if (error.code === "23505") return jsonError("A template with this name already exists.", 409);
+      throw error;
+    }
+    if (data.is_default) await clearOtherDefaults(db, data.id);
+    await logAudit({ actor: auth.user, action: "checklist_template.update", entityType: "checklist_template", entityId: data.id, before, after: data, request });
+    return NextResponse.json({ success: true, template: data });
+  } catch (err) {
+    return serverError("Checklist templates PATCH", err);
+  }
+}

@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import {
   ArrowRight, Briefcase, CalendarClock, CalendarDays, CheckSquare, ClipboardList, FileSignature, Inbox, MessageSquareWarning,
-  Percent, Plus, ShieldCheck, Timer, UserPlus, Users, Activity, Building2,
+  Percent, Plus, ShieldCheck, Timer, UserPlus, Users, Activity, Building2, ListTodo, FileCheck2, ShieldQuestion, UserCheck, Contact,
 } from "lucide-react";
 import { hcmJson } from "@/lib/hcm/session";
 import { useInternalUser } from "@/components/hcm/InternalUserContext";
@@ -57,6 +57,8 @@ export default function DashboardHome() {
     can("interview.view") && { href: "/admin/dashboard/interviews", label: "Interviews", icon: CalendarDays },
     can("user.manage") && { href: "/admin/dashboard/users", label: "Add user", icon: UserPlus },
     can("org.manage") && { href: "/admin/dashboard/org", label: "Organisation", icon: Building2 },
+    can("onboarding.manage") && { href: "/admin/dashboard/onboarding", label: "Pre-joining", icon: UserCheck },
+    can("employee.view") && { href: "/admin/dashboard/employees", label: "Employees", icon: Contact },
   ].filter(Boolean);
 
   return (
@@ -91,7 +93,9 @@ export default function DashboardHome() {
         <Spinner label="Loading dashboard..." />
       ) : data ? (
         <div className="space-y-8">
+          {data.me && <MyProfileSection me={data.me} />}
           <PendingActions data={data} />
+          {data.onboarding && <OnboardingSection o={data.onboarding} />}
           {data.recruitment && <RecruitmentSection r={data.recruitment} />}
           {data.manager && <ManagerSection m={data.manager} />}
           {data.interviewer && <InterviewerSection iv={data.interviewer} />}
@@ -154,6 +158,15 @@ function PendingActions({ data }) {
   const sentBack = data.manager?.requisitions?.["Sent back"] || 0;
   if (sentBack > 0) {
     cards.push({ key: "sentBack", href: "/admin/dashboard/requisitions?tab=action", icon: ClipboardList, count: sentBack, label: "Requisitions sent back to you", tone: "amber" });
+  }
+  if (data.myTasks > 0) {
+    cards.push({ key: "tasks", href: "/admin/dashboard/tasks", icon: ListTodo, count: data.myTasks, label: "Open tasks assigned to you", tone: "teal" });
+  }
+  if (data.onboarding?.docsAwaiting > 0) {
+    cards.push({ key: "docs", href: "/admin/dashboard/onboarding", icon: FileCheck2, count: data.onboarding.docsAwaiting, label: "Joiner documents to verify", tone: "sky" });
+  }
+  if (data.onboarding?.readyToConvert > 0) {
+    cards.push({ key: "convert", href: "/admin/dashboard/onboarding?status=Ready", icon: UserCheck, count: data.onboarding.readyToConvert, label: "Joiners ready to convert", tone: "teal" });
   }
   if (data.interviewer?.feedbackDue > 0) {
     cards.push({ key: "feedback", href: "/admin/dashboard/interviews", icon: MessageSquareWarning, count: data.interviewer.feedbackDue, label: "Interview feedback due", tone: "red" });
@@ -374,6 +387,81 @@ function AdminSection({ a }) {
             </ul>
           )}
         </Card>
+      </div>
+    </section>
+  );
+}
+
+function MyProfileSection({ me }) {
+  return (
+    <section>
+      <SectionTitle>My profile</SectionTitle>
+      <Card
+        actions={
+          <Link href={`/admin/dashboard/employees/${me.id}`} className="text-xs font-semibold text-brand-teal-600 hover:underline">
+            View profile
+          </Link>
+        }
+        title={`${me.designation || "Employee"} · ${me.employee_code}`}
+      >
+        <dl className="grid grid-cols-2 lg:grid-cols-5 gap-4">
+          {[
+            ["Department", me.departments?.name],
+            ["Location", me.locations?.name],
+            ["Manager", me.manager?.full_name],
+            ["Joined", formatDate(me.joining_date)],
+            ["Stage", me.stage_end_date ? `${me.stage} until ${formatDate(me.stage_end_date)}` : me.stage],
+          ].map(([label, value]) => (
+            <div key={label}>
+              <dt className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">{label}</dt>
+              <dd className="text-sm font-semibold text-slate-800 mt-0.5">{value || "—"}</dd>
+            </div>
+          ))}
+        </dl>
+      </Card>
+    </section>
+  );
+}
+
+function OnboardingSection({ o }) {
+  return (
+    <section>
+      <SectionTitle>Onboarding</SectionTitle>
+      <div className="grid lg:grid-cols-3 gap-4">
+        <Card
+          title="Upcoming joiners"
+          className="lg:col-span-2"
+          actions={
+            <Link href="/admin/dashboard/onboarding" className="text-xs font-semibold text-brand-teal-600 hover:underline">
+              View all
+            </Link>
+          }
+        >
+          {o.upcoming.length === 0 ? (
+            <p className="text-sm text-slate-400">No one is in pre-joining.</p>
+          ) : (
+            <ul className="divide-y divide-slate-100">
+              {o.upcoming.map((j) => (
+                <li key={j.id} className="flex flex-wrap items-center justify-between gap-2 py-2.5 first:pt-0 last:pb-0">
+                  <div>
+                    <Link href={`/admin/dashboard/onboarding/${j.id}`} className="text-sm font-semibold text-slate-800 hover:text-brand-teal-700">
+                      {j.full_name}
+                    </Link>
+                    <p className="text-xs text-slate-500">{j.position}</p>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-sm text-slate-700">{formatDate(j.joining_date)}</p>
+                    <p className={`text-xs ${j.status === "Ready" ? "text-emerald-600 font-semibold" : "text-slate-400"}`}>{j.status}</p>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          )}
+        </Card>
+        <div className="grid grid-cols-2 lg:grid-cols-1 gap-4">
+          <StatTile icon={CalendarDays} label="Joining this week" value={o.joinersThisWeek} href="/admin/dashboard/onboarding" />
+          <StatTile icon={ShieldQuestion} label="Background checks pending" value={o.bgvPending} href="/admin/dashboard/onboarding" />
+        </div>
       </div>
     </section>
   );

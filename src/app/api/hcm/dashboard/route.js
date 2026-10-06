@@ -115,6 +115,29 @@ export async function GET(request) {
       out.interviewer = { upcoming, feedbackDue };
     }
 
+    if (hasPermission(user, "onboarding.manage")) {
+      const weekEnd = new Date(now.getTime() + 7 * 86400000).toISOString().slice(0, 10);
+      const today = now.toISOString().slice(0, 10);
+      const [joinersThisWeek, docsAwaiting, bgvPending, readyToConvert, { data: upcomingJoiners }] = await Promise.all([
+        count(db.from("joiners").select("id", head).in("status", ["Pre-joining", "Ready"]).gte("joining_date", today).lte("joining_date", weekEnd)),
+        count(db.from("joiner_documents").select("id, joiners!inner(status)", head).eq("status", "Uploaded").in("joiners.status", ["Pre-joining", "Ready"])),
+        count(db.from("joiners").select("id", head).in("status", ["Pre-joining", "Ready"]).in("bgv_status", ["Not started", "In progress"])),
+        count(db.from("joiners").select("id", head).eq("status", "Ready")),
+        db.from("joiners").select("id, full_name, position, joining_date, status").in("status", ["Pre-joining", "Ready"]).order("joining_date").limit(6),
+      ]);
+      out.onboarding = { joinersThisWeek, docsAwaiting, bgvPending, readyToConvert, upcoming: upcomingJoiners || [] };
+    }
+
+    const [myTasks, { data: me }] = await Promise.all([
+      count(db.from("tasks").select("id", head).eq("assignee_id", user.id).eq("status", "Open")),
+      db.from("employees")
+        .select("id, employee_code, designation, stage, stage_end_date, joining_date, departments(name), locations(name), manager:internal_users!employees_manager_id_fkey(full_name, email)")
+        .eq("id", user.id)
+        .maybeSingle(),
+    ]);
+    out.myTasks = myTasks;
+    out.me = me || null;
+
     return NextResponse.json({ success: true, ...out });
   } catch (err) {
     return serverError("Dashboard GET", err);

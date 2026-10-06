@@ -1,8 +1,9 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Briefcase, LayoutDashboard, UserCircle, LogOut, LogIn, CalendarClock, FileSignature } from "lucide-react";
+import { Briefcase, LayoutDashboard, UserCircle, LogOut, LogIn, CalendarClock, FileSignature, DoorOpen } from "lucide-react";
 import { useCandidateSession } from "./useCandidateSession";
 
 const NAV = [
@@ -10,12 +11,27 @@ const NAV = [
   { href: "/candidate/dashboard", label: "My Applications", icon: LayoutDashboard, auth: true },
   { href: "/candidate/interviews", label: "Interviews", icon: CalendarClock, auth: true },
   { href: "/candidate/offers", label: "Offers", icon: FileSignature, auth: true },
+  { href: "/candidate/joining", label: "Joining", icon: DoorOpen, auth: true, joiner: true },
   { href: "/candidate/profile", label: "Profile", icon: UserCircle, auth: true },
 ];
 
 export default function PortalShell({ children }) {
   const pathname = usePathname();
-  const { user, loading, signOut } = useCandidateSession();
+  const { user, loading, signOut, authFetch } = useCandidateSession();
+  const [hasJoiner, setHasJoiner] = useState(false);
+
+  // "Joining" only appears once onboarding has started (offer accepted).
+  useEffect(() => {
+    if (!user) return setHasJoiner(false);
+    let active = true;
+    authFetch("/api/candidate/onboarding")
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => active && setHasJoiner(Boolean(data?.joiner)))
+      .catch(() => {});
+    return () => {
+      active = false;
+    };
+  }, [user?.id, authFetch]); // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col font-sans">
@@ -29,7 +45,7 @@ export default function PortalShell({ children }) {
           </Link>
 
           <nav className="flex items-center gap-1 sm:gap-2 text-sm">
-            {NAV.filter((item) => !item.auth || user).map(({ href, label, icon: Icon }) => {
+            {NAV.filter((item) => (!item.auth || user) && (!item.joiner || hasJoiner || pathname === item.href)).map(({ href, label, icon: Icon }) => {
               const active = pathname === href || (href !== "/careers" && pathname.startsWith(href));
               return (
                 <Link

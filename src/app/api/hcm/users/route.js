@@ -2,7 +2,8 @@ import { NextResponse } from "next/server";
 import { createHcmAdminClient } from "@/lib/candidateSupabase";
 import { requirePermission, jsonError, serverError } from "@/lib/hcm/auth";
 import { logAudit } from "@/lib/hcm/audit";
-import { queueEmail, appUrl } from "@/lib/hcm/notify";
+import { queueEmail } from "@/lib/hcm/notify";
+import { inviteInternalUser, InviteError } from "@/lib/hcm/users";
 
 const USER_SELECT =
   "id, full_name, email, designation, status, last_login_at, created_at, department_id, departments(name), user_roles(role_code, expires_at)";
@@ -13,7 +14,9 @@ export async function GET(request) {
   const lite = new URL(request.url).searchParams.get("lite") === "1";
   const auth = await requirePermission(
     request,
-    lite ? ["user.manage", "interview.schedule", "job.manage", "requisition.review"] : "user.manage"
+    lite
+      ? ["user.manage", "interview.schedule", "job.manage", "requisition.review", "onboarding.manage", "employee.manage"]
+      : "user.manage"
   );
   if (auth.error) return auth.error;
 
@@ -41,75 +44,37 @@ export async function POST(request) {
     const body = await request.json();
     const fullName = String(body.full_name || "").trim();
     const email = String(body.email || "").trim().toLowerCase();
-    const roleCodes = Array.isArray(body.roles) ? [...new Set(body.roles)] : [];
+    const roleCodes = Array.isArray(body.roles) ? body.roles : [];
     const expiresAt = body.expires_at || null;
 
-    if (!fullName || !/\S+@\S+\.\S+/.test(email)) return jsonError("Name and a valid email are required.");
-    if (!roleCodes.length) return jsonError("Assign at least one role.");
-
-    const domain = process.env.COMPANY_EMAIL_DOMAIN?.trim().toLowerCase();
-    if (domain && !email.endsWith(`@${domain}`)) {
-      return jsonError(`Internal users must use an @${domain} email address.`);
-    }
-
-    const supabase = createHcmAdminClient();
-    const { data: validRoles } = await supabase.from("roles").select("code, name").in("code", roleCodes);
-    if ((validRoles || []).length !== roleCodes.length) return jsonError("One or more roles are invalid.");
-
-    const { data: existing } = await supabase.from("internal_users").select("id").eq("email", email).maybeSingle();
-    if (existing) return jsonError("An internal user with this email already exists.", 409);
-
-    const { data: link, error: linkError } = await supabase.auth.admin.generateLink({
-      type: "invite",
+    const { userId, inviteLink, roles } = await inviteInternalUser({
+      fullName,
       email,
-      options: { data: { full_name: fullName }, redirectTo: appUrl("/admin/set-password") },
+      roles: roleCodes,
+      departmentId: body.department_id,
+      designation: body.designation,
+      expiresAt,
+      actor: auth.user,
     });
-    if (linkError) {
-      if (/already been registered|already registered|exists/i.test(linkError.message)) {
-        return jsonError("This email already has a candidate account. Use the person's official company email.", 409);
-      }
-      throw linkError;
-    }
-    const authUser = link.user;
-    await supabase.auth.admin.updateUserById(authUser.id, {
-      app_metadata: { ...(authUser.app_metadata || {}), account_type: "internal" },
-    });
-    await supabase.from("candidate_profiles").delete().eq("id", authUser.id);
 
-    const { error: insertError } = await supabase.from("internal_users").insert({
-      id: authUser.id,
-      full_name: fullName,
-      email,
-      department_id: body.department_id || null,
-      designation: body.designation?.trim() || null,
-      status: "Invited",
-      invited_by: auth.user.id,
-    });
-    if (insertError) throw insertError;
-
-    const { error: rolesError } = await supabase.from("user_roles").insert(
-      roleCodes.map((role_code) => ({ user_id: authUser.id, role_code, expires_at: expiresAt, granted_by: auth.user.id }))
-    );
-    if (rolesError) throw rolesError;
-
-    const inviteLink = link.properties?.action_link;
     await queueEmail(
       "user_invited",
       email,
-      { name: fullName, inviter_name: auth.user.fullName, roles: validRoles.map((r) => r.name).join(", "), invite_link: inviteLink },
-      { entity: "internal_user", id: authUser.id }
+      { name: fullName, inviter_name: auth.user.fullName, roles: roles.map((r) => r.name).join(", "), invite_link: inviteLink },
+      { entity: "internal_user", id: userId }
     );
     await logAudit({
       actor: auth.user,
       action: "user.invite",
       entityType: "internal_user",
-      entityId: authUser.id,
-      after: { email, full_name: fullName, roles: roleCodes, expires_at: expiresAt },
+      entityId: userId,
+      after: { email, full_name: fullName, roles: [...new Set(roleCodes)], expires_at: expiresAt },
       request,
     });
 
-    return NextResponse.json({ success: true, userId: authUser.id, inviteLink }, { status: 201 });
+    return NextResponse.json({ success: true, userId, inviteLink }, { status: 201 });
   } catch (err) {
+    if (err instanceof InviteError) return jsonError(err.message, err.status);
     return serverError("Users POST", err);
   }
 }

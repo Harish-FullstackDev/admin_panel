@@ -23,8 +23,9 @@ export async function GET(request) {
     const ids = (apps || []).map((a) => a.id);
     let interviews = [];
     let offers = [];
+    let joinerDocs = [];
     if (ids.length) {
-      const [iv, of] = await Promise.all([
+      const [iv, of, jd] = await Promise.all([
         supabase
           .from("interviews")
           .select("id, application_id, round_name, scheduled_at, mode, status, candidate_confirmed_at")
@@ -33,9 +34,16 @@ export async function GET(request) {
           .gte("scheduled_at", new Date().toISOString())
           .order("scheduled_at"),
         supabase.from("offers").select("id, application_id, status, expires_at").in("application_id", ids).in("status", ACTIVE_OFFER_STATUSES),
+        supabase
+          .from("joiner_documents")
+          .select("status, required, joiners!inner(application_id, status)")
+          .in("joiners.application_id", ids)
+          .in("joiners.status", ["Pre-joining", "Ready"])
+          .in("status", ["Requested", "Rejected"]),
       ]);
       interviews = iv.data || [];
       offers = of.data || [];
+      joinerDocs = jd.data || [];
     }
 
     const applications = (apps || []).map((a) => {
@@ -44,6 +52,8 @@ export async function GET(request) {
       const actions = [];
       if (upcoming.some((i) => !i.candidate_confirmed_at)) actions.push({ type: "confirm_interview", href: "/candidate/interviews" });
       if (offer) actions.push({ type: "respond_offer", href: "/candidate/offers" });
+      const docsDue = joinerDocs.filter((d) => d.joiners.application_id === a.id).length;
+      if (docsDue) actions.push({ type: "upload_documents", href: "/candidate/joining", count: docsDue });
       return {
         ...a,
         label: candidateLabel(a.stage),

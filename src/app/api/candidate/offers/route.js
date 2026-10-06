@@ -5,6 +5,7 @@ import { moveApplication, WorkflowError } from "@/lib/hcm/workflow";
 import { queueEmail, notifyUsers, usersWithPermission } from "@/lib/hcm/notify";
 import { logAudit } from "@/lib/hcm/audit";
 import { expireOffers } from "@/lib/hcm/offers";
+import { createJoiner } from "@/lib/hcm/onboarding";
 
 const VISIBLE = ["Sent", "Accepted", "Declined", "Discussion requested", "Expired"];
 
@@ -91,6 +92,8 @@ export async function POST(request) {
           await supabase.from("requisitions").update({ status: "Filled" }).eq("id", job.requisition_id).eq("status", "Posted");
         }
       }
+      // HR can start onboarding by hand if this fails.
+      await createJoiner(app.id, actor, request).catch((err) => console.error("createJoiner after accept failed:", err));
     }
     if (action === "decline") {
       await moveApplication(app.id, "Rejected", { actor, request, reason: `Offer declined: ${text}` });
