@@ -16,7 +16,7 @@ export async function GET(request, { params }) {
     const { data: employee } = await db.from("employees").select(EMPLOYEE_SELECT).eq("id", id).maybeSingle();
     if (!employee || !canViewEmployee(user, employee)) return jsonError("Employee not found.", 404);
 
-    const [{ data: events }, { data: documents }, { data: reports }, { data: letters }, { data: openStage }] = await Promise.all([
+    const [{ data: events }, { data: documents }, { data: reports }, { data: letters }, { data: openStage }, { data: exitCase }] = await Promise.all([
       db.from("employee_events").select("*").eq("employee_id", id).order("created_at", { ascending: false }),
       employee.joiner_id
         ? db.from("joiner_documents").select("id, joiner_id, type_code, name, required, status, file_name, verified_at").eq("joiner_id", employee.joiner_id)
@@ -24,6 +24,8 @@ export async function GET(request, { params }) {
       db.from("employees").select("id, full_name, designation, employee_code, stage").eq("manager_id", id).order("full_name"),
       db.from("letters").select("id, type, title, issued_at").eq("employee_id", id).order("issued_at", { ascending: false }),
       db.from("stage_records").select("id, type, status").eq("employee_id", id).in("status", ["Active", "Pending approval"]).maybeSingle(),
+      db.from("exit_cases").select("id, status").eq("employee_id", id).in("status", ["Pending manager", "Pending HR", "Pending approval", "In notice", "Completed"])
+        .order("created_at", { ascending: false }).limit(1).maybeSingle(),
     ]);
     const actorIds = [...new Set((events || []).map((e) => e.actor_id).filter(Boolean))];
     const { data: actors } = actorIds.length ? await db.from("internal_users").select("id, full_name").in("id", actorIds) : { data: [] };
@@ -37,6 +39,8 @@ export async function GET(request, { params }) {
       directReports: reports || [],
       letters: letters || [],
       stageRecord: openStage || null,
+      // Unapproved HR separations stay hidden from the employee themselves.
+      exitCase: exitCase && !(id === user.id && exitCase.status === "Pending approval") ? exitCase : null,
       canEdit: hasPermission(user, "employee.manage"),
     });
   } catch (err) {

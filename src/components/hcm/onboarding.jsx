@@ -5,7 +5,7 @@ import { Check, Copy } from "lucide-react";
 import { hcmJson } from "@/lib/hcm/session";
 import { Badge, Button, inputClass } from "@/components/hcm/ui";
 
-export const TASK_TEAMS = ["HR", "IT", "Admin", "Manager", "Buddy"];
+export const TASK_TEAMS = ["HR", "IT", "Admin", "Finance", "Manager", "Buddy"];
 export const JOIN_STAGES = ["Intern", "Probation", "Full-time"];
 export const BGV_STATUSES = ["Not started", "In progress", "Cleared", "Failed"];
 
@@ -62,6 +62,17 @@ const STYLES = {
   "Off today": "bg-slate-50 text-slate-500 border-slate-200",
   Upcoming: "bg-white text-slate-400 border-slate-200",
   "Not joined": "bg-white text-slate-300 border-slate-100",
+  // exits
+  "In notice": "bg-orange-50 text-orange-700 border-orange-200",
+  Withdrawn: "bg-slate-100 text-slate-500 border-slate-200",
+  Resignation: "bg-slate-50 text-slate-700 border-slate-200",
+  Termination: "bg-red-50 text-red-700 border-red-200",
+  Release: "bg-red-50 text-red-700 border-red-200",
+  "Contract end": "bg-slate-50 text-slate-700 border-slate-200",
+  Retirement: "bg-slate-50 text-slate-700 border-slate-200",
+  Processing: "bg-indigo-50 text-indigo-700 border-indigo-200",
+  Paid: "bg-emerald-50 text-emerald-700 border-emerald-200",
+  "Not applicable": "bg-slate-100 text-slate-500 border-slate-200",
 };
 
 export function StatusChip({ status }) {

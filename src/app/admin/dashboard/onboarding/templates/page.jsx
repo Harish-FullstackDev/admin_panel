@@ -1,6 +1,7 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { Suspense, useCallback, useEffect, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { ArrowDown, ArrowUp, Archive, ArchiveRestore, ListChecks, Lock, Pencil, Plus, Trash2, FileText } from "lucide-react";
 import { hcmJson } from "@/lib/hcm/session";
 import { useInternalUser } from "@/components/hcm/InternalUserContext";
@@ -15,22 +16,31 @@ export default function TemplatesPage() {
     <div className="p-4 sm:p-6 lg:p-8 max-w-6xl mx-auto">
       {!user ? (
         <Spinner />
-      ) : !can("onboarding.manage") ? (
-        <EmptyState icon={Lock} title="You don't have access to this page" description="Onboarding is managed by HR." />
+      ) : !can("onboarding.manage") && !can("exit.manage") ? (
+        <EmptyState icon={Lock} title="You don't have access to this page" description="Checklists are managed by HR." />
       ) : (
-        <Manager />
+        <Suspense fallback={<Spinner />}>
+          <Manager canOnboarding={can("onboarding.manage")} canExit={can("exit.manage")} />
+        </Suspense>
       )}
     </div>
   );
 }
 
-function offsetLabel(days) {
+function offsetLabel(days, purpose) {
   const n = Number(days) || 0;
-  if (n === 0) return "Day 1";
+  if (n === 0) return purpose === "exit" ? "Last day" : "Day 1";
   return n < 0 ? `${-n}d before` : `${n}d after`;
 }
 
-function Manager() {
+const PURPOSES = [
+  { key: "onboarding", label: "Onboarding" },
+  { key: "exit", label: "Exit clearance" },
+];
+
+function Manager({ canOnboarding, canExit }) {
+  const wanted = useSearchParams().get("purpose");
+  const [purpose, setPurpose] = useState(canOnboarding ? "onboarding" : "exit");
   const [templates, setTemplates] = useState(null);
   const [docTypes, setDocTypes] = useState(null);
   const [error, setError] = useState("");
@@ -41,15 +51,24 @@ function Manager() {
 
   const load = useCallback(async () => {
     try {
-      const [t, d] = await Promise.all([hcmJson("/api/hcm/checklist-templates"), hcmJson("/api/hcm/document-types")]);
+      const [t, d] = await Promise.all([
+        hcmJson(`/api/hcm/checklist-templates?purpose=${purpose}`),
+        purpose === "onboarding" ? hcmJson("/api/hcm/document-types") : { documentTypes: [] },
+      ]);
       setTemplates(t.templates);
       setDocTypes(d.documentTypes);
     } catch (err) {
       setError(err.message);
     }
-  }, []);
+  }, [purpose]);
 
   useEffect(() => {
+    if (wanted === "exit" && canExit) setPurpose("exit");
+    else if (canOnboarding && wanted !== "exit") setPurpose("onboarding");
+  }, [wanted, canExit, canOnboarding]);
+
+  useEffect(() => {
+    setTemplates(null);
     load();
   }, [load]);
 
@@ -66,8 +85,12 @@ function Manager() {
   return (
     <>
       <PageHeader
-        title="Onboarding checklists"
-        description="Task templates applied to every new joiner, and the documents joiners are asked to upload."
+        title={purpose === "exit" ? "Exit checklists" : "Onboarding checklists"}
+        description={
+          purpose === "exit"
+            ? "Clearance tasks created when an exit is accepted. Due dates count from the last working day."
+            : "Task templates applied to every new joiner, and the documents joiners are asked to upload."
+        }
         actions={
           <Button onClick={() => setEditing({ name: "", employment_type: "", is_default: false, items: [{ title: "", team: "HR", due_offset_days: 0 }] })}>
             <Plus className="w-4 h-4" aria-hidden="true" /> New template
@@ -75,6 +98,21 @@ function Manager() {
         }
       />
       <ErrorBanner message={error} onClose={() => setError("")} />
+      {canOnboarding && canExit && (
+        <div role="tablist" aria-label="Checklist type" className="inline-flex p-1 rounded-xl bg-slate-100 mb-5">
+          {PURPOSES.map((p) => (
+            <button
+              key={p.key}
+              role="tab"
+              aria-selected={purpose === p.key}
+              onClick={() => setPurpose(p.key)}
+              className={`px-4 h-8 rounded-lg text-sm font-semibold cursor-pointer ${purpose === p.key ? "bg-white text-slate-900 shadow-sm" : "text-slate-500 hover:text-slate-800"}`}
+            >
+              {p.label}
+            </button>
+          ))}
+        </div>
+      )}
 
       {!templates ? (
         <Spinner />
@@ -115,7 +153,7 @@ function Manager() {
                         <span className="w-14 shrink-0 text-[11px] font-bold text-slate-400 uppercase">{item.team}</span>
                         <span className="flex-1 text-slate-700">{item.title}</span>
                         {item.assignee_id && <span className="text-[11px] text-slate-400">{userNames[item.assignee_id] || "assigned"}</span>}
-                        <span className="text-[11px] text-slate-500 whitespace-nowrap">{offsetLabel(item.due_offset_days)}</span>
+                        <span className="text-[11px] text-slate-500 whitespace-nowrap">{offsetLabel(item.due_offset_days, purpose)}</span>
                       </li>
                     ))}
                   </ol>
@@ -124,6 +162,7 @@ function Manager() {
             </div>
           )}
 
+          {purpose === "onboarding" && (
           <Card
             title="Joining documents"
             actions={
@@ -156,12 +195,14 @@ function Manager() {
               ))}
             </ul>
           </Card>
+          )}
         </div>
       )}
 
       {editing && (
         <TemplateEditor
           template={editing}
+          purpose={purpose}
           users={org.users}
           onClose={() => setEditing(null)}
           onSaved={async () => {
@@ -184,7 +225,8 @@ function Manager() {
   );
 }
 
-function TemplateEditor({ template, users, onClose, onSaved }) {
+function TemplateEditor({ template, purpose, users, onClose, onSaved }) {
+  const exit = purpose === "exit";
   const [form, setForm] = useState({
     name: template.name,
     employment_type: template.employment_type || "",
@@ -211,6 +253,7 @@ function TemplateEditor({ template, users, onClose, onSaved }) {
     try {
       const body = {
         ...form,
+        purpose,
         employment_type: form.employment_type || null,
         items: form.items.map((i) => ({ ...i, assignee_id: i.assignee_id || undefined, due_offset_days: Number(i.due_offset_days) || 0 })),
       };
@@ -244,26 +287,28 @@ function TemplateEditor({ template, users, onClose, onSaved }) {
         <Field label="Name" required>
           <Input value={form.name} onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))} />
         </Field>
-        <Field label="Use for employment type" hint="Joiners of this type get this template instead of the default.">
-          <Select placeholder="Any" options={EMPLOYMENT_TYPES} value={form.employment_type} onChange={(e) => setForm((f) => ({ ...f, employment_type: e.target.value }))} />
-        </Field>
+        {!exit && (
+          <Field label="Use for employment type" hint="Joiners of this type get this template instead of the default.">
+            <Select placeholder="Any" options={EMPLOYMENT_TYPES} value={form.employment_type} onChange={(e) => setForm((f) => ({ ...f, employment_type: e.target.value }))} />
+          </Field>
+        )}
         <label className="sm:col-span-2 flex items-center gap-2 text-sm text-slate-700">
           <input type="checkbox" checked={form.is_default} onChange={(e) => setForm((f) => ({ ...f, is_default: e.target.checked }))} className="w-4 h-4 accent-brand-teal-600" />
-          Default template (used when no type-specific template matches)
+          {exit ? "Default exit checklist (applied automatically when an exit is accepted)" : "Default template (used when no type-specific template matches)"}
         </label>
       </div>
 
-      <p className="text-xs font-semibold text-slate-600 mb-2">Tasks · due date is relative to the joining date (negative = before Day 1)</p>
+      <p className="text-xs font-semibold text-slate-600 mb-2">{exit ? "Tasks · due date is relative to the last working day (negative = before it)" : "Tasks · due date is relative to the joining date (negative = before Day 1)"}</p>
       <div className="space-y-2">
         {form.items.map((item, i) => (
           <div key={i} className="flex flex-wrap items-center gap-2 p-2 rounded-xl border border-slate-100 bg-slate-50/60">
             <Input aria-label="Task title" className="flex-1 min-w-[200px] h-9" placeholder="Task" value={item.title} onChange={(e) => setItem(i, "title", e.target.value)} />
-            <Select aria-label="Team" className="w-28 h-9" options={TASK_TEAMS} value={item.team} onChange={(e) => setItem(i, "team", e.target.value)} />
-            <Input aria-label="Days from joining" type="number" className="w-20 h-9" value={item.due_offset_days} onChange={(e) => setItem(i, "due_offset_days", e.target.value)} />
+            <Select aria-label="Team" className="w-28 h-9" options={exit ? TASK_TEAMS.filter((t) => t !== "Buddy") : TASK_TEAMS} value={item.team} onChange={(e) => setItem(i, "team", e.target.value)} />
+            <Input aria-label={exit ? "Days from last working day" : "Days from joining"} type="number" className="w-20 h-9" value={item.due_offset_days} onChange={(e) => setItem(i, "due_offset_days", e.target.value)} />
             <Select
               aria-label="Default assignee"
               className="w-40 h-9"
-              placeholder={item.team === "Manager" ? "Joiner's manager" : item.team === "Buddy" ? "Joiner's buddy" : "Unassigned"}
+              placeholder={item.team === "Manager" ? (exit ? "Employee's manager" : "Joiner's manager") : item.team === "Buddy" ? "Joiner's buddy" : "Unassigned"}
               options={users.map((u) => ({ value: u.id, label: u.full_name }))}
               value={item.assignee_id}
               onChange={(e) => setItem(i, "assignee_id", e.target.value)}

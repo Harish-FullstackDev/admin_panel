@@ -6,7 +6,7 @@ import { usePathname } from "next/navigation";
 import {
   LayoutDashboard, Users, ShieldCheck, Building2, Mail, ScrollText, Newspaper, FileText, BookOpen,
   ClipboardList, CheckSquare, Briefcase, UserSearch, CalendarClock, BadgeCheck, Bell, LogOut, Menu, X, ChevronDown,
-  UserPlus, Contact, ListChecks, ListTodo, Hourglass, Plane, Fingerprint, CalendarRange, Settings2,
+  UserPlus, Contact, ListChecks, ListTodo, Hourglass, Plane, Fingerprint, CalendarRange, Settings2, DoorOpen,
 } from "lucide-react";
 import { InternalUserProvider, useInternalUser } from "@/components/hcm/InternalUserContext";
 import { hcmJson, signOutInternal } from "@/lib/hcm/session";
@@ -50,6 +50,8 @@ const PEOPLE: NavGroup = {
     { label: "Team Leave", href: "/admin/dashboard/leave/team", icon: CalendarRange, perm: "leave.approve" },
     { label: "Team Attendance", href: "/admin/dashboard/attendance/team", icon: Fingerprint, perm: "attendance.view" },
     { label: "Leave Settings", href: "/admin/dashboard/leave/settings", icon: Settings2, perm: "leave.manage" },
+    { label: "Exits", href: "/admin/dashboard/exits", icon: DoorOpen, perm: "exit.review" },
+    { label: "Exit Checklists", href: "/admin/dashboard/onboarding/templates?purpose=exit", icon: ListChecks, perm: "exit.manage" },
   ],
 };
 
@@ -109,6 +111,7 @@ const MENUS: Record<string, NavGroup[]> = {
         { label: "Interns & Probation", href: "/admin/dashboard/probation", icon: Hourglass, perm: "probation.review" },
         { label: "Team Leave", href: "/admin/dashboard/leave/team", icon: CalendarRange, perm: "leave.approve" },
         { label: "Team Attendance", href: "/admin/dashboard/attendance/team", icon: Fingerprint, perm: "attendance.view" },
+        { label: "Team Exits", href: "/admin/dashboard/exits", icon: DoorOpen, perm: "exit.review" },
       ],
     },
   ],
@@ -238,6 +241,7 @@ function Shell({ children }: { children: React.ReactNode }) {
         ]
       : []),
     ...(stageItem ? [stageItem] : []),
+    ...(user.isEmployee ? [{ label: "Resignation", href: "/admin/dashboard/resignation", icon: DoorOpen }] : []),
   ];
   const groups = (MENUS[activeRole || ""] || [{ items: [HOME] }])
     .map((g, i) => ({ ...g, items: [...g.items, ...(i === 0 ? selfItems : [])].filter((item) => !item.perm || can(item.perm)) }))

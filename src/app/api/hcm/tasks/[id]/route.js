@@ -4,6 +4,7 @@ import { getInternalUser, hasPermission, jsonError, serverError } from "@/lib/hc
 import { logAudit } from "@/lib/hcm/audit";
 import { announceTask, TASK_TEAMS } from "@/lib/hcm/onboarding";
 import { loadStage, stageAccess } from "@/lib/hcm/stage";
+import { loadExit, exitAccess, announceExitTask, ExitError } from "@/lib/hcm/exit";
 
 const STATUSES = ["Open", "Done", "Skipped"];
 
@@ -19,11 +20,16 @@ export async function PATCH(request, { params }) {
     if (!task) return jsonError("Task not found.", 404);
 
     let manager = false;
+    let exitCtx = null;
     if (task.context_type === "stage") {
       const { record, employee } = await loadStage(task.context_id);
       const access = stageAccess(user, record, employee);
       if (record.status === "Completed") return jsonError("This record is closed.");
       manager = (access.manage || access.review) && !access.self;
+    } else if (task.context_type === "exit") {
+      exitCtx = await loadExit(task.context_id);
+      if (exitCtx.exitCase.status !== "In notice") return jsonError(`This exit is ${exitCtx.exitCase.status.toLowerCase()}.`);
+      manager = exitAccess(user, exitCtx.exitCase, exitCtx.employee).hr;
     } else {
       manager = hasPermission(user, "onboarding.manage");
     }
@@ -69,7 +75,7 @@ export async function PATCH(request, { params }) {
     await logAudit({
       actor: user,
       action: "status" in body || "progress" in body ? "task.status" : "task.update",
-      entityType: task.context_type === "onboarding" ? "joiner" : "stage_record",
+      entityType: { onboarding: "joiner", stage: "stage_record", exit: "exit_case" }[task.context_type],
       entityId: task.context_id,
       before: Object.fromEntries(Object.keys(update).map((k) => [k, task[k] ?? null])),
       after: { task_id: id, title: updated.title, ...update },
@@ -80,8 +86,12 @@ export async function PATCH(request, { params }) {
       const { data: joiner } = await db.from("joiners").select("*").eq("id", task.context_id).maybeSingle();
       if (joiner) await announceTask(updated, joiner);
     }
+    if (update.assignee_id && update.assignee_id !== task.assignee_id && exitCtx) {
+      await announceExitTask(updated, exitCtx.exitCase, exitCtx.employee);
+    }
     return NextResponse.json({ success: true, task: updated });
   } catch (err) {
+    if (err instanceof ExitError) return jsonError(err.message, err.status);
     return serverError("Task PATCH", err);
   }
 }

@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Check, Copy, Lock, Search, UserPlus, Users } from "lucide-react";
+import { Check, Copy, KeyRound, Lock, Mail, Search, UserPlus, Users } from "lucide-react";
 import { hcmJson } from "@/lib/hcm/session";
 import { useInternalUser } from "@/components/hcm/InternalUserContext";
 import {
@@ -76,6 +76,7 @@ function UsersManager({ currentUserId }) {
   const [showAdd, setShowAdd] = useState(false);
   const [selectedId, setSelectedId] = useState(null);
   const [inviteLink, setInviteLink] = useState("");
+  const [resetFor, setResetFor] = useState(null);
 
   const loadUsers = useCallback(async () => {
     const data = await hcmJson("/api/hcm/users");
@@ -185,7 +186,8 @@ function UsersManager({ currentUserId }) {
                     <th className="px-3 py-2">Roles</th>
                     <th className="px-3 py-2">Department</th>
                     <th className="px-3 py-2">Status</th>
-                    <th className="px-5 py-2">Last login</th>
+                    <th className="px-3 py-2">Last login</th>
+                    <th className="px-5 py-2"><span className="sr-only">Actions</span></th>
                   </tr>
                 </thead>
                 <tbody>
@@ -223,7 +225,24 @@ function UsersManager({ currentUserId }) {
                       <td className="px-3 py-3">
                         <StatusBadge status={u.status} />
                       </td>
-                      <td className="px-5 py-3 text-slate-500 whitespace-nowrap">{formatDate(u.last_login_at, true)}</td>
+                      <td className="px-3 py-3 text-slate-500 whitespace-nowrap">{formatDate(u.last_login_at, true)}</td>
+                      <td className="px-5 py-3 text-right">
+                        {RESETTABLE.includes(u.status) && (
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            aria-label={`Password reset link for ${u.full_name}`}
+                            title="Password reset link"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setResetFor(u);
+                            }}
+                            onKeyDown={(e) => e.stopPropagation()}
+                          >
+                            <KeyRound className="w-3.5 h-3.5" aria-hidden="true" />
+                          </Button>
+                        )}
+                      </td>
                     </tr>
                   ))}
                 </tbody>
@@ -256,11 +275,120 @@ function UsersManager({ currentUserId }) {
           onClose={() => setSelectedId(null)}
           onChanged={refresh}
           onInviteLink={setInviteLink}
+          onResetLink={setResetFor}
         />
       )}
 
+      {resetFor && <ResetLinkModal user={resetFor} onClose={() => setResetFor(null)} />}
+
       {inviteLink && <InviteLinkModal link={inviteLink} onClose={() => setInviteLink("")} />}
     </>
+  );
+}
+
+const RESETTABLE = ["Active", "Invited"];
+
+function CopyLink({ link, label }) {
+  const [copied, setCopied] = useState(false);
+  const copy = async () => {
+    try {
+      await navigator.clipboard.writeText(link);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      setCopied(false);
+    }
+  };
+  return (
+    <div className="flex gap-2">
+      <input readOnly aria-label={label} value={link} onFocus={(e) => e.target.select()} className={`${inputClass} font-mono text-xs`} />
+      <Button variant="secondary" onClick={copy} aria-label={`Copy ${label.toLowerCase()}`}>
+        {copied ? <Check className="w-4 h-4" aria-hidden="true" /> : <Copy className="w-4 h-4" aria-hidden="true" />}
+        {copied ? "Copied" : "Copy"}
+      </Button>
+    </div>
+  );
+}
+
+/** Super Admin: create a fresh one-time password reset (magic) link, emailed or copied. */
+function ResetLinkModal({ user, onClose }) {
+  const [delivery, setDelivery] = useState("copy");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+  const [result, setResult] = useState(null);
+
+  const generate = async () => {
+    setBusy(true);
+    setError("");
+    try {
+      const data = await hcmJson(`/api/hcm/users/${user.id}`, { method: "PATCH", body: { action: "reset_link", delivery } });
+      setResult(data);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const options = [
+    { value: "copy", icon: Copy, title: "Copy link", text: "Show the link here so you can share it yourself (chat, phone, etc.)." },
+    { value: "email", icon: Mail, title: "Send by email", text: `Email the link to ${user.email}.` },
+  ];
+
+  return (
+    <Modal
+      title={`Password reset link · ${user.full_name}`}
+      onClose={() => !busy && onClose()}
+      footer={
+        result ? (
+          <Button onClick={onClose}>Done</Button>
+        ) : (
+          <>
+            <Button variant="secondary" onClick={onClose} disabled={busy}>
+              Cancel
+            </Button>
+            <Button onClick={generate} loading={busy}>
+              {delivery === "email" ? "Send link" : "Generate link"}
+            </Button>
+          </>
+        )
+      }
+    >
+      <ErrorBanner message={error} onClose={() => setError("")} />
+      {!result ? (
+        <div className="space-y-3">
+          <p className="text-sm text-slate-600">
+            Creates a new one-time link that lets {user.full_name} set a new password. Their current password keeps working until they use it.
+          </p>
+          <fieldset className="space-y-2">
+            <legend className="sr-only">How to deliver the link</legend>
+            {options.map((o) => (
+              <label
+                key={o.value}
+                className={`flex items-start gap-3 p-3 rounded-xl border cursor-pointer ${delivery === o.value ? "border-brand-teal-400 bg-brand-teal-50/60" : "border-slate-200 hover:border-slate-300"}`}
+              >
+                <input type="radio" name="delivery" value={o.value} checked={delivery === o.value} onChange={() => setDelivery(o.value)} className="mt-1 accent-brand-teal-600" />
+                <o.icon className="w-4 h-4 mt-0.5 text-slate-500" aria-hidden="true" />
+                <span>
+                  <span className="block text-sm font-semibold text-slate-800">{o.title}</span>
+                  <span className="block text-xs text-slate-500">{o.text}</span>
+                </span>
+              </label>
+            ))}
+          </fieldset>
+        </div>
+      ) : result.delivery === "email" ? (
+        <div className="space-y-2">
+          <p className="text-sm text-emerald-700">Reset link queued for {user.email}.</p>
+          <p className="text-xs text-slate-500">Email delivery isn&apos;t connected yet, so it sits in the email outbox. Use &quot;Copy link&quot; if they need it now.</p>
+        </div>
+      ) : (
+        <div className="space-y-3">
+          <p className="text-sm text-slate-600">Share this one-time link with {user.full_name}. It works once and expires; generate a new one if needed.</p>
+          <CopyLink link={result.resetLink || ""} label="Reset link" />
+        </div>
+      )}
+    </Modal>
   );
 }
 
@@ -420,7 +548,7 @@ const ACTION_COPY = {
 
 function noop() {}
 
-function UserDetailModal({ userId, currentUserId, roles, departments, roleNames, onClose, onChanged, onInviteLink }) {
+function UserDetailModal({ userId, currentUserId, roles, departments, roleNames, onClose, onChanged, onInviteLink, onResetLink }) {
   const [detail, setDetail] = useState(null);
   const [history, setHistory] = useState([]);
   const [form, setForm] = useState(null);
@@ -625,6 +753,15 @@ function UserDetailModal({ userId, currentUserId, roles, departments, roleNames,
                 })}
               </div>
             </fieldset>
+
+            {RESETTABLE.includes(status) && (
+              <div>
+                <h3 className="text-xs font-semibold text-slate-600 mb-2">Password</h3>
+                <Button variant="secondary" size="sm" onClick={() => onResetLink(detail)}>
+                  <KeyRound className="w-3.5 h-3.5" aria-hidden="true" /> Send / copy reset link
+                </Button>
+              </div>
+            )}
 
             {!isSelf && (
               <div>

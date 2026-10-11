@@ -174,6 +174,9 @@ export async function validateLeave(employee, input, { excludeId = null } = {}) 
   if (start < iso(new Date(parse(today).getTime() - 30 * 86400000))) throw new LeaveError("Leave can only be backdated up to 30 days.");
   if (start === end && startHalf && endHalf) throw new LeaveError("Pick either first or second half for a single day.");
   if (employee.status !== "Active" && employee.status !== "Notice") throw new LeaveError("Only active employees can apply for leave.");
+  if (employee.last_working_date && end > employee.last_working_date) {
+    throw new LeaveError(`Leave can't go past your last working day (${employee.last_working_date}).`);
+  }
 
   const types = await applicableTypes(employee);
   const type = types.find((t) => t.code === input.leave_type);

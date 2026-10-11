@@ -3,7 +3,7 @@ import { logAudit } from "@/lib/hcm/audit";
 import { queueEmail, notifyUsers, usersWithPermission, appUrl } from "@/lib/hcm/notify";
 
 export const DOCUMENTS_BUCKET = "documents";
-export const TASK_TEAMS = ["HR", "IT", "Admin", "Manager", "Buddy"];
+export const TASK_TEAMS = ["HR", "IT", "Admin", "Finance", "Manager", "Buddy"];
 export const JOIN_STAGES = ["Intern", "Probation", "Full-time"];
 export const BGV_STATUSES = ["Not started", "In progress", "Cleared", "Failed"];
 
@@ -108,10 +108,10 @@ export async function applyTemplate(joiner, templateId, actor) {
   const db = createHcmAdminClient();
   let template = null;
   if (templateId) {
-    ({ data: template } = await db.from("checklist_templates").select("*").eq("id", templateId).eq("archived", false).maybeSingle());
+    ({ data: template } = await db.from("checklist_templates").select("*").eq("id", templateId).eq("purpose", "onboarding").eq("archived", false).maybeSingle());
     if (!template) throw new OnboardingError("Checklist template not found.", 404);
   } else {
-    const { data: candidates } = await db.from("checklist_templates").select("*").eq("archived", false);
+    const { data: candidates } = await db.from("checklist_templates").select("*").eq("purpose", "onboarding").eq("archived", false);
     template =
       (candidates || []).find((t) => t.employment_type === joiner.employment_type) ||
       (candidates || []).find((t) => t.is_default) ||

@@ -20,9 +20,13 @@ export async function GET(request) {
 
     let query = db.from("tasks").select(TASK_SELECT).order("due_date", { ascending: true, nullsFirst: false }).limit(500);
     if (context) {
-      const { data: isJoiner } = await db.from("joiners").select("id").eq("id", context).maybeSingle();
+      const [{ data: isJoiner }, { data: exitCase }] = await Promise.all([
+        db.from("joiners").select("id").eq("id", context).maybeSingle(),
+        db.from("exit_cases").select("id, employee_id").eq("id", context).maybeSingle(),
+      ]);
       let allowed = Boolean(isJoiner) && hasPermission(user, "onboarding.manage");
-      if (!isJoiner) {
+      if (exitCase) allowed = hasPermission(user, "exit.manage") || exitCase.employee_id === user.id;
+      else if (!isJoiner) {
         try {
           const { record, employee } = await loadStage(context);
           const access = stageAccess(user, record, employee);
@@ -42,13 +46,16 @@ export async function GET(request) {
 
     const joinerIds = [...new Set(tasks.filter((t) => t.context_type === "onboarding").map((t) => t.context_id))];
     const stageIds = [...new Set(tasks.filter((t) => t.context_type === "stage").map((t) => t.context_id))];
-    const [{ data: joiners }, { data: stages }] = await Promise.all([
+    const exitIds = [...new Set(tasks.filter((t) => t.context_type === "exit").map((t) => t.context_id))];
+    const [{ data: joiners }, { data: stages }, { data: exits }] = await Promise.all([
       joinerIds.length ? db.from("joiners").select("id, full_name, position, joining_date, status").in("id", joinerIds) : { data: [] },
       stageIds.length ? db.from("stage_records").select("id, type, status, end_date, employee_id, employees(full_name)").in("id", stageIds) : { data: [] },
+      exitIds.length ? db.from("exit_cases").select("id, type, status, last_working_date, employee_id, employees(full_name)").in("id", exitIds) : { data: [] },
     ]);
     const byId = Object.fromEntries([
       ...(joiners || []).map((j) => [j.id, { ...j, kind: "onboarding" }]),
       ...(stages || []).map((r) => [r.id, { id: r.id, kind: "stage", type: r.type, status: r.status, end_date: r.end_date, employee_id: r.employee_id, full_name: r.employees?.full_name }]),
+      ...(exits || []).map((c) => [c.id, { id: c.id, kind: "exit", type: c.type, status: c.status, last_working_date: c.last_working_date, employee_id: c.employee_id, full_name: c.employees?.full_name }]),
     ]);
     return NextResponse.json({
       success: true,

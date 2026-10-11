@@ -4,6 +4,7 @@ import { getInternalUser, hasPermission, serverError } from "@/lib/hcm/auth";
 import { managedJobIds } from "@/lib/hcm/recruitment";
 import { remindDueReviews, weekStart } from "@/lib/hcm/stage";
 import { balanceSummary, todayIso, isWeekend, holidayMap } from "@/lib/hcm/leave";
+import { remindExits } from "@/lib/hcm/exit";
 
 const count = async (query) => {
   const { count: n } = await query;
@@ -221,6 +222,53 @@ export async function GET(request) {
           selfSubmitted: (reviews || []).some((r) => r.type === "self" && r.submitted_at),
         };
       }
+    }
+
+    if (hasPermission(user, "exit.manage") || hasPermission(user, "exit.review") || hasPermission(user, "exit.approve")) {
+      const hrExit = hasPermission(user, "exit.manage");
+      if (hrExit) await remindExits();
+      const all = hrExit || hasPermission(user, "exit.approve") || user.permissions["exit.review"] === "all";
+      const { data: open } = await db
+        .from("exit_cases")
+        .select("id, employee_id, type, status, last_working_date, manager_id, initiated_by, employees!inner(full_name, manager_id)")
+        .in("status", ["Pending manager", "Pending HR", "Pending approval", "In notice"])
+        .order("last_working_date", { ascending: true, nullsFirst: false });
+      const mine = (open || []).filter((c) => c.employee_id !== user.id && (all || c.manager_id === user.id || c.employees.manager_id === user.id));
+      const notice = mine.filter((c) => c.status === "In notice");
+      const ids = notice.map((c) => c.id);
+      const { data: tasks } = ids.length ? await db.from("tasks").select("context_id, status").eq("context_type", "exit").in("context_id", ids) : { data: [] };
+      const progress = {};
+      for (const t of tasks || []) {
+        progress[t.context_id] ??= { done: 0, total: 0 };
+        progress[t.context_id].total += 1;
+        if (t.status !== "Open") progress[t.context_id].done += 1;
+      }
+      const awaitingMe = mine.filter(
+        (c) =>
+          (c.status === "Pending manager" && (c.manager_id === user.id || c.employees.manager_id === user.id || hrExit)) ||
+          (c.status === "Pending HR" && hrExit) ||
+          (c.status === "Pending approval" && hasPermission(user, "exit.approve") && c.initiated_by !== user.id)
+      ).length;
+      const horizon = new Date(now.getTime() + 30 * 86400000).toISOString().slice(0, 10);
+      out.exits = {
+        awaitingMe,
+        inNotice: notice.length,
+        notice: notice
+          .filter((c) => c.last_working_date && c.last_working_date <= horizon)
+          .slice(0, 6)
+          .map((c) => ({ id: c.id, type: c.type, full_name: c.employees.full_name, last_working_date: c.last_working_date, clearance: progress[c.id] || { done: 0, total: 0 } })),
+      };
+    }
+
+    if (me) {
+      const { data: myExit } = await db
+        .from("exit_cases")
+        .select("id, type, status, last_working_date, requested_last_day, interview_submitted_at")
+        .eq("employee_id", user.id)
+        .in("status", ["Pending manager", "Pending HR", "Pending approval", "In notice"])
+        .maybeSingle();
+      // HR-initiated separations stay private until approved.
+      if (myExit && myExit.status !== "Pending approval") out.myExit = myExit;
     }
 
     return NextResponse.json({ success: true, ...out });

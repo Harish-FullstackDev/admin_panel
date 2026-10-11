@@ -14,7 +14,7 @@ export async function GET(request, { params }) {
       .select("*, employees(full_name, employee_code)")
       .eq("id", id)
       .maybeSingle();
-    const allowed = letter && (letter.employee_id === user.id || hasPermission(user, "employee.manage") || hasPermission(user, "probation.manage"));
+    const allowed = letter && (letter.employee_id === user.id || hasPermission(user, "employee.manage") || hasPermission(user, "probation.manage") || hasPermission(user, "exit.manage"));
     if (!allowed) return jsonError("Letter not found.", 404);
     return NextResponse.json({ success: true, letter });
   } catch (err) {

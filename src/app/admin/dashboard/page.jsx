@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import {
   ArrowRight, Briefcase, CalendarClock, CalendarDays, CheckSquare, ClipboardList, FileSignature, Inbox, MessageSquareWarning,
-  Percent, Plus, ShieldCheck, Timer, UserPlus, Users, Activity, Building2, ListTodo, FileCheck2, ShieldQuestion, UserCheck, Contact, Hourglass, Gavel, PenLine, Plane, Fingerprint, Wrench,
+  Percent, Plus, ShieldCheck, Timer, UserPlus, Users, Activity, Building2, ListTodo, FileCheck2, ShieldQuestion, UserCheck, Contact, Hourglass, Gavel, PenLine, Plane, Fingerprint, Wrench, DoorOpen,
 } from "lucide-react";
 import { hcmJson } from "@/lib/hcm/session";
 import { useInternalUser } from "@/components/hcm/InternalUserContext";
@@ -98,7 +98,9 @@ export default function DashboardHome() {
           {data.myStage && <MyStageSection st={data.myStage} />}
           <PendingActions data={data} />
           {data.onboarding && <OnboardingSection o={data.onboarding} />}
+          {data.myExit && <MyExitSection ex={data.myExit} />}
           {data.probation && <ProbationSection p={data.probation} />}
+          {data.exits && data.exits.notice.length > 0 && <ExitsSection x={data.exits} />}
           {data.teamLeave && data.teamLeave.offToday.length > 0 && <OffTodaySection people={data.teamLeave.offToday} />}
           {data.recruitment && <RecruitmentSection r={data.recruitment} />}
           {data.manager && <ManagerSection m={data.manager} />}
@@ -171,6 +173,12 @@ function PendingActions({ data }) {
   }
   if (data.myAttendance && !data.myAttendance.offDay && !data.myAttendance.record?.check_in) {
     cards.push({ key: "checkin", href: "/admin/dashboard/attendance", icon: Fingerprint, count: "—", label: "You haven't checked in today", tone: "red" });
+  }
+  if (data.exits?.awaitingMe > 0) {
+    cards.push({ key: "exits", href: "/admin/dashboard/exits", icon: DoorOpen, count: data.exits.awaitingMe, label: "Resignations / separations awaiting you", tone: "amber" });
+  }
+  if (data.myExit?.status === "In notice" && !data.myExit.interview_submitted_at && data.myExit.type === "Resignation") {
+    cards.push({ key: "exitInterview", href: "/admin/dashboard/resignation", icon: PenLine, count: 1, label: "Exit interview to complete", tone: "sky" });
   }
   if (data.myTasks > 0) {
     cards.push({ key: "tasks", href: "/admin/dashboard/tasks", icon: ListTodo, count: data.myTasks, label: "Open tasks assigned to you", tone: "teal" });
@@ -502,6 +510,65 @@ function MyStageSection({ st }) {
         <StatTile icon={CalendarDays} label="Mid-point review" value={formatDate(st.mid_review_date)} />
         <StatTile icon={CalendarDays} label="Final review" value={formatDate(st.final_review_date)} />
         <StatTile icon={PenLine} label="Self-assessment" value={st.selfSubmitted ? "Submitted" : "Pending"} href="/admin/dashboard/my-stage" hint={st.mentor?.full_name ? `Mentor: ${st.mentor.full_name}` : undefined} />
+      </div>
+    </section>
+  );
+}
+
+function MyExitSection({ ex }) {
+  const now = new Date();
+  const left = ex.last_working_date
+    ? Math.round((new Date(`${ex.last_working_date}T00:00:00`) - new Date(now.getFullYear(), now.getMonth(), now.getDate())) / 86400000)
+    : null;
+  return (
+    <section>
+      <SectionTitle>My exit</SectionTitle>
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <StatTile icon={DoorOpen} label="Status" value={ex.status} href="/admin/dashboard/resignation" />
+        <StatTile
+          icon={CalendarDays}
+          label={ex.last_working_date ? "Last working day" : "Requested last day"}
+          value={formatDate(ex.last_working_date || ex.requested_last_day)}
+          hint={left !== null ? `${Math.max(left, 0)} days left` : undefined}
+        />
+      </div>
+    </section>
+  );
+}
+
+function ExitsSection({ x }) {
+  return (
+    <section>
+      <SectionTitle>Exits in notice period</SectionTitle>
+      <div className="grid lg:grid-cols-3 gap-4">
+        <Card
+          title="Leaving in the next 30 days"
+          className="lg:col-span-2"
+          actions={
+            <Link href="/admin/dashboard/exits" className="text-xs font-semibold text-brand-teal-600 hover:underline">
+              View all
+            </Link>
+          }
+        >
+          <ul className="divide-y divide-slate-100">
+            {x.notice.map((c) => (
+              <li key={c.id} className="flex flex-wrap items-center justify-between gap-2 py-2.5 first:pt-0 last:pb-0">
+                <div>
+                  <Link href={`/admin/dashboard/exits/${c.id}`} className="text-sm font-semibold text-slate-800 hover:text-brand-teal-700">
+                    {c.full_name}
+                  </Link>
+                  <p className="text-xs text-slate-500">
+                    {c.type} · clearance {c.clearance.done}/{c.clearance.total}
+                  </p>
+                </div>
+                <p className="text-sm text-slate-700">{formatDate(c.last_working_date)}</p>
+              </li>
+            ))}
+          </ul>
+        </Card>
+        <div className="grid grid-cols-2 lg:grid-cols-1 gap-4">
+          <StatTile icon={DoorOpen} label="Serving notice" value={x.inNotice} href="/admin/dashboard/exits" />
+        </div>
       </div>
     </section>
   );

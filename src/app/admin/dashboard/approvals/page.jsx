@@ -2,8 +2,9 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { CheckCircle2, ClipboardList, CornerUpLeft, FileSignature, Forward, Inbox, XCircle, Hourglass, Plane } from "lucide-react";
+import { CheckCircle2, ClipboardList, CornerUpLeft, FileSignature, Forward, Inbox, XCircle, Hourglass, Plane, DoorOpen } from "lucide-react";
 import { LeaveActionModal, leaveDates } from "@/components/hcm/leave";
+import { AcceptExitModal, SeparationDecisionModal } from "@/components/hcm/exit";
 import { hcmJson } from "@/lib/hcm/session";
 import { useInternalUser } from "@/components/hcm/InternalUserContext";
 import {
@@ -33,6 +34,7 @@ function ApprovalsInbox() {
   const [notice, setNotice] = useState("");
   const [modal, setModal] = useState(null);
   const [leaveAction, setLeaveAction] = useState(null);
+  const [exitAction, setExitAction] = useState(null);
 
   const load = useCallback(async () => {
     const data = await hcmJson("/api/hcm/approvals");
@@ -78,12 +80,14 @@ function ApprovalsInbox() {
       {loading ? (
         <Spinner />
       ) : sorted.length === 0 ? (
-        <EmptyState icon={Inbox} title="Nothing waiting for you" description="Requisitions, above-band offers, probation extensions or releases and leave requests that need your approval appear here." />
+        <EmptyState icon={Inbox} title="Nothing waiting for you" description="Requisitions, above-band offers, probation extensions or releases, leave requests and resignations that need your approval appear here." />
       ) : (
         <ul className="space-y-4">
           {sorted.map((item) => (
             <li key={item.id}>
-              {item.entity_type === "leave_request" ? (
+              {item.entity_type === "exit_case" ? (
+                <ExitCard item={item} onAction={(action) => setExitAction({ item, action })} />
+              ) : item.entity_type === "leave_request" ? (
                 <LeaveCard item={item} onAction={(action) => setLeaveAction({ request: item.entity, action })} />
               ) : item.entity_type === "stage_record" ? (
                 <StageOutcomeCard item={item} />
@@ -98,6 +102,30 @@ function ApprovalsInbox() {
       )}
 
       {modal && <DecisionModal item={modal.item} action={modal.action} onClose={() => setModal(null)} onDone={onDone} />}
+      {exitAction &&
+        (exitAction.action === "accept" ? (
+          <AcceptExitModal
+            exitCase={exitAction.item.entity}
+            employeeName={exitAction.item.entity.employees?.full_name}
+            hrStep={exitAction.item.step_key === "hr_acceptance"}
+            onClose={() => setExitAction(null)}
+            onDone={async (message) => {
+              setExitAction(null);
+              await onDone(message);
+            }}
+          />
+        ) : (
+          <SeparationDecisionModal
+            exitCase={exitAction.item.entity}
+            employeeName={exitAction.item.entity.employees?.full_name}
+            decision={exitAction.action}
+            onClose={() => setExitAction(null)}
+            onDone={async (message) => {
+              setExitAction(null);
+              await onDone(message);
+            }}
+          />
+        ))}
       {leaveAction && (
         <LeaveActionModal
           request={leaveAction.request}
@@ -408,6 +436,72 @@ function StageOutcomeCard({ item }) {
           <div className="sm:col-span-3">
             <dt className="text-xs text-slate-500">HR note</dt>
             <dd className="text-slate-700 whitespace-pre-line">{r.proposed_note}</dd>
+          </div>
+        )}
+      </dl>
+    </CardShell>
+  );
+}
+
+const EXIT_STEPS = { manager_acceptance: "Manager acceptance", hr_acceptance: "HR acceptance", chro_approval: "CHRO approval" };
+
+function ExitCard({ item, onAction }) {
+  const c = item.entity;
+  const e = c.employees || {};
+  const resignation = c.type === "Resignation";
+  return (
+    <CardShell
+      icon={DoorOpen}
+      kind={resignation ? "Resignation" : `Separation · ${c.type}`}
+      stepLabel={EXIT_STEPS[item.step_key] || item.step_key}
+      item={item}
+      title={e.full_name || "Employee"}
+      subtitle={[e.designation, e.employee_code, e.stage].filter(Boolean).join(" · ")}
+      actions={
+        <>
+          <Link href={`/admin/dashboard/exits/${c.id}`} className="inline-flex items-center h-8 px-3 rounded-xl text-xs font-semibold text-slate-600 hover:bg-slate-100 mr-auto">
+            View details
+          </Link>
+          {resignation ? (
+            <Button onClick={() => onAction("accept")}>
+              <CheckCircle2 className="w-4 h-4" aria-hidden="true" /> Accept
+            </Button>
+          ) : (
+            <>
+              <Button variant="secondary" onClick={() => onAction("reject")}>
+                <XCircle className="w-4 h-4" aria-hidden="true" /> Reject
+              </Button>
+              <Button onClick={() => onAction("approve")}>
+                <CheckCircle2 className="w-4 h-4" aria-hidden="true" /> Approve
+              </Button>
+            </>
+          )}
+        </>
+      }
+    >
+      <dl className="grid sm:grid-cols-3 gap-3 text-sm">
+        <div>
+          <dt className="text-xs text-slate-500">{resignation ? "Requested last day" : "Last working day"}</dt>
+          <dd className="font-semibold text-slate-800">{formatDate(c.requested_last_day)}</dd>
+        </div>
+        <div>
+          <dt className="text-xs text-slate-500">Notice period</dt>
+          <dd className="text-slate-800">{c.notice_days} days</dd>
+        </div>
+        <div>
+          <dt className="text-xs text-slate-500">Submitted</dt>
+          <dd className="text-slate-800">{formatDate(c.submitted_at)}</dd>
+        </div>
+        {(c.reason_category || c.reason) && (
+          <div className="sm:col-span-3">
+            <dt className="text-xs text-slate-500">Reason</dt>
+            <dd className="text-slate-700 whitespace-pre-line">{[c.reason_category, c.reason].filter(Boolean).join(": ")}</dd>
+          </div>
+        )}
+        {c.manager_comment && (
+          <div className="sm:col-span-3">
+            <dt className="text-xs text-slate-500">Manager comment</dt>
+            <dd className="text-slate-700 whitespace-pre-line">{c.manager_comment}</dd>
           </div>
         )}
       </dl>

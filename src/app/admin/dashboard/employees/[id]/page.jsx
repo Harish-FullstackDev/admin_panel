@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
-import { ArrowLeft, Eye, FileText, Hourglass, Pencil } from "lucide-react";
+import { ArrowLeft, DoorOpen, Eye, FileText, Hourglass, Pencil } from "lucide-react";
 import { hcmJson } from "@/lib/hcm/session";
 import { useInternalUser } from "@/components/hcm/InternalUserContext";
 import { Card, Button, Field, Input, Textarea, Select, Spinner, ErrorBanner, Modal, Badge, formatDate } from "@/components/hcm/ui";
@@ -20,6 +20,9 @@ const EVENT_LABELS = {
   extend: "Period extended",
   convert: "Converted",
   release: "Released",
+  resign: "Notice period started",
+  exit_cancel: "Exit cancelled",
+  exit: "Exited",
 };
 
 const FIELD_LABELS = {
@@ -33,6 +36,7 @@ const FIELD_LABELS = {
   stage_end_date: "Stage end date",
   status: "Status",
   last_working_date: "Last working day",
+  exit_type: "Exit type",
   phone: "Phone",
   personal_email: "Personal email",
 };
@@ -117,6 +121,14 @@ function Profile() {
               className="inline-flex items-center gap-1.5 h-10 px-4 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-sm font-semibold text-slate-700"
             >
               <Hourglass className="w-4 h-4" aria-hidden="true" /> {stageRecord.type} tracker
+            </Link>
+          )}
+          {data.exitCase && (can("exit.review") || can("exit.manage")) && (
+            <Link
+              href={`/admin/dashboard/exits/${data.exitCase.id}`}
+              className="inline-flex items-center gap-1.5 h-10 px-4 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-sm font-semibold text-slate-700"
+            >
+              <DoorOpen className="w-4 h-4" aria-hidden="true" /> {data.exitCase.status === "Completed" ? "Exit record" : `Exit: ${data.exitCase.status}`}
             </Link>
           )}
           {canEdit && (

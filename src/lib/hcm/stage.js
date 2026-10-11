@@ -1,9 +1,11 @@
 import { createHcmAdminClient } from "@/lib/candidateSupabase";
 import { hasPermission } from "@/lib/hcm/auth";
 import { logAudit } from "@/lib/hcm/audit";
-import { queueEmail, notifyUsers, usersWithPermission, renderTemplate, appUrl } from "@/lib/hcm/notify";
+import { queueEmail, notifyUsers, usersWithPermission, appUrl } from "@/lib/hcm/notify";
 import { getWorkflowSteps, openApproval, pendingApproval, closeApproval } from "@/lib/hcm/workflow";
 import { addDays } from "@/lib/hcm/onboarding";
+import { issueLetterFor } from "@/lib/hcm/letters";
+import { openReleaseCase } from "@/lib/hcm/exit";
 
 export const OPEN_STATUSES = ["Active", "Pending approval"];
 export const RECOMMENDATIONS = ["Confirm", "Extend", "Convert to probation", "Convert to full-time", "Release"];
@@ -107,35 +109,20 @@ async function hrUsers() {
   return usersWithPermission("probation.manage");
 }
 
-function letterVars(employee, record, extra = {}) {
-  return {
-    date: new Date().toLocaleDateString("en-IN", { day: "numeric", month: "long", year: "numeric" }),
-    name: employee.full_name,
-    designation: employee.designation || "—",
-    employee_code: employee.employee_code,
-    stage_type_lower: record.type === "Intern" ? "internship" : "probation",
-    start_date: record.start_date,
-    end_date: record.end_date,
-    signatory: "Human Resources",
-    note: "",
-    ...extra,
-  };
-}
-
 /** Renders a letter_* template and stores it against the employee. */
 export async function issueLetter(employee, record, type, vars, actor) {
-  const db = createHcmAdminClient();
-  const { data: template } = await db.from("email_templates").select("subject, body").eq("code", `letter_${type}`).maybeSingle();
-  const all = letterVars(employee, record, vars);
-  const title = template ? renderTemplate(template.subject, all) : type;
-  const body = template ? renderTemplate(template.body, all) : "";
-  const { data, error } = await db
-    .from("letters")
-    .insert({ employee_id: employee.id, type, title, body, stage_record_id: record.id, issued_by: actor?.id ?? null })
-    .select()
-    .single();
-  if (error) throw error;
-  return data;
+  return issueLetterFor(
+    employee,
+    type,
+    {
+      stage_type_lower: record.type === "Intern" ? "internship" : "probation",
+      start_date: record.start_date,
+      end_date: record.end_date,
+      ...vars,
+    },
+    { stageRecordId: record.id },
+    actor
+  );
 }
 
 const OUTCOME_EVENT = { Confirmed: "confirm", Extended: "extend", Converted: "convert", Released: "release" };
@@ -231,6 +218,11 @@ export async function applyOutcome(record, employee, p, actor, request) {
     }
   } else if (p.outcome === "Released") {
     letter = await issueLetter(employee, record, "release", { last_day: p.lastDay, note: p.note || "" }, actor);
+    try {
+      await openReleaseCase({ ...employee, ...employeeUpdate }, record, p.lastDay, p.note, actor);
+    } catch (err) {
+      console.error("Opening the exit case for a release failed:", err);
+    }
   }
 
   await logAudit({

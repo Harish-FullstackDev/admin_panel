@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { createHcmAdminClient } from "@/lib/candidateSupabase";
 import { requirePermission, jsonError, serverError } from "@/lib/hcm/auth";
 import { logAudit } from "@/lib/hcm/audit";
-import { appUrl } from "@/lib/hcm/notify";
+import { appUrl, queueEmail } from "@/lib/hcm/notify";
 
 const BAN_FOREVER = "876000h";
 
@@ -47,6 +47,7 @@ export async function GET(request, { params }) {
 
 // PATCH: { full_name?, designation?, department_id?, roles?: [{code, expires_at}],
 //          action?: "suspend" | "reactivate" | "deactivate" | "resend_invite" }
+//        | { action: "reset_link", delivery: "email" | "copy" }
 export async function PATCH(request, { params }) {
   const auth = await requirePermission(request, "user.manage");
   if (auth.error) return auth.error;
@@ -59,6 +60,38 @@ export async function PATCH(request, { params }) {
     if (!before) return jsonError("User not found.", 404);
     const isSelf = id === auth.user.id;
     const isSuperAdmin = before.user_roles.some((r) => r.role_code === "super_admin");
+
+    if (body.action === "reset_link") {
+      const delivery = body.delivery === "email" ? "email" : "copy";
+      if (!["Active", "Invited"].includes(before.status)) {
+        return jsonError(`This account is ${before.status.toLowerCase()}. Reactivate it first.`);
+      }
+      const { data: link, error } = await supabase.auth.admin.generateLink({
+        type: "recovery",
+        email: before.email,
+        options: { redirectTo: appUrl("/admin/set-password") },
+      });
+      if (error) throw error;
+      const resetLink = link.properties?.action_link;
+      if (delivery === "email") {
+        await queueEmail(
+          before.status === "Invited" ? "user_invited" : "password_reset_link",
+          before.email,
+          { name: before.full_name, inviter_name: auth.user.fullName, roles: "", invite_link: resetLink, reset_link: resetLink, admin_name: auth.user.fullName || auth.user.email },
+          { entity: "internal_user", id }
+        );
+      }
+      await logAudit({
+        actor: auth.user,
+        action: "user.reset_link",
+        entityType: "internal_user",
+        entityId: id,
+        after: { delivery },
+        request,
+      });
+      // The link itself is only returned for "copy"; emailed links never reach the browser.
+      return NextResponse.json({ success: true, delivery, ...(delivery === "copy" ? { resetLink } : {}) });
+    }
 
     if (body.action) {
       if (isSelf && body.action !== "resend_invite") return jsonError("You cannot change your own account status.");

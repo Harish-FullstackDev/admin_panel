@@ -51,7 +51,7 @@ export default function TasksPage() {
 
   return (
     <div className="p-4 sm:p-6 lg:p-8 max-w-5xl mx-auto">
-      <PageHeader title="My Tasks" description="Onboarding and internship / probation work assigned to you." />
+      <PageHeader title="My Tasks" description="Onboarding, internship / probation and exit clearance work assigned to you." />
       <ErrorBanner message={error} onClose={() => setError("")} />
 
       <div role="tablist" aria-label="Task status" className="inline-flex p-1 rounded-xl bg-slate-100 mb-5">
@@ -92,7 +92,20 @@ export default function TasksPage() {
                           </Link>
                         </>
                       )}
-                      {t.context && t.context.kind !== "stage" && (
+                      {t.context?.kind === "exit" && (
+                        <>
+                          {" · "}
+                          {can("exit.manage") ? (
+                            <Link href={`/admin/dashboard/exits/${t.context.id}`} className="text-brand-teal-700 hover:underline">
+                              {t.context.full_name}
+                            </Link>
+                          ) : (
+                            t.context.full_name
+                          )}
+                          {` (exit, last day ${formatDate(t.context.last_working_date)})`}
+                        </>
+                      )}
+                      {t.context && t.context.kind === "onboarding" && (
                         <>
                           {" · "}
                           {can("onboarding.manage") ? (

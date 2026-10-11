@@ -1,8 +1,11 @@
 import { NextResponse } from "next/server";
 import { createHcmAdminClient } from "@/lib/candidateSupabase";
-import { requirePermission, jsonError, serverError } from "@/lib/hcm/auth";
+import { requirePermission, hasPermission, jsonError, serverError } from "@/lib/hcm/auth";
 import { logAudit } from "@/lib/hcm/audit";
 import { TASK_TEAMS } from "@/lib/hcm/onboarding";
+
+const PURPOSES = { onboarding: "onboarding.manage", exit: "exit.manage" };
+const ANY = Object.values(PURPOSES);
 
 function cleanTemplate(body) {
   const name = String(body.name || "").trim();
@@ -28,11 +31,23 @@ function cleanTemplate(body) {
   };
 }
 
+function canManage(user, purpose) {
+  return Boolean(PURPOSES[purpose]) && hasPermission(user, PURPOSES[purpose]);
+}
+
+// GET ?purpose=onboarding|exit (default onboarding)
 export async function GET(request) {
-  const auth = await requirePermission(request, "onboarding.manage");
+  const auth = await requirePermission(request, ANY);
   if (auth.error) return auth.error;
   try {
-    const { data, error } = await createHcmAdminClient().from("checklist_templates").select("*").order("archived").order("name");
+    const purpose = new URL(request.url).searchParams.get("purpose") || "onboarding";
+    if (!canManage(auth.user, purpose)) return jsonError("You do not have permission to do this.", 403);
+    const { data, error } = await createHcmAdminClient()
+      .from("checklist_templates")
+      .select("*")
+      .eq("purpose", purpose)
+      .order("archived")
+      .order("name");
     if (error) throw error;
     return NextResponse.json({ success: true, templates: data });
   } catch (err) {
@@ -40,23 +55,26 @@ export async function GET(request) {
   }
 }
 
-async function clearOtherDefaults(db, keepId) {
-  await db.from("checklist_templates").update({ is_default: false }).neq("id", keepId).eq("is_default", true);
+async function clearOtherDefaults(db, keep) {
+  await db.from("checklist_templates").update({ is_default: false }).neq("id", keep.id).eq("purpose", keep.purpose).eq("is_default", true);
 }
 
 export async function POST(request) {
-  const auth = await requirePermission(request, "onboarding.manage");
+  const auth = await requirePermission(request, ANY);
   if (auth.error) return auth.error;
   try {
-    const { value, error: invalid } = cleanTemplate(await request.json());
+    const body = await request.json();
+    const purpose = body.purpose || "onboarding";
+    if (!canManage(auth.user, purpose)) return jsonError("You do not have permission to do this.", 403);
+    const { value, error: invalid } = cleanTemplate(body);
     if (invalid) return jsonError(invalid);
     const db = createHcmAdminClient();
-    const { data, error } = await db.from("checklist_templates").insert(value).select().single();
+    const { data, error } = await db.from("checklist_templates").insert({ ...value, purpose }).select().single();
     if (error) {
       if (error.code === "23505") return jsonError("A template with this name already exists.", 409);
       throw error;
     }
-    if (data.is_default) await clearOtherDefaults(db, data.id);
+    if (data.is_default) await clearOtherDefaults(db, data);
     await logAudit({ actor: auth.user, action: "checklist_template.create", entityType: "checklist_template", entityId: data.id, after: data, request });
     return NextResponse.json({ success: true, template: data }, { status: 201 });
   } catch (err) {
@@ -66,13 +84,14 @@ export async function POST(request) {
 
 // PATCH { id, ...fields } or { id, archived }
 export async function PATCH(request) {
-  const auth = await requirePermission(request, "onboarding.manage");
+  const auth = await requirePermission(request, ANY);
   if (auth.error) return auth.error;
   try {
     const body = await request.json();
     const db = createHcmAdminClient();
     const { data: before } = await db.from("checklist_templates").select("*").eq("id", body.id).maybeSingle();
     if (!before) return jsonError("Template not found.", 404);
+    if (!canManage(auth.user, before.purpose)) return jsonError("You do not have permission to do this.", 403);
 
     let update;
     if (Object.keys(body).every((k) => k === "id" || k === "archived")) {
@@ -87,7 +106,7 @@ export async function PATCH(request) {
       if (error.code === "23505") return jsonError("A template with this name already exists.", 409);
       throw error;
     }
-    if (data.is_default) await clearOtherDefaults(db, data.id);
+    if (data.is_default) await clearOtherDefaults(db, data);
     await logAudit({ actor: auth.user, action: "checklist_template.update", entityType: "checklist_template", entityId: data.id, before, after: data, request });
     return NextResponse.json({ success: true, template: data });
   } catch (err) {
